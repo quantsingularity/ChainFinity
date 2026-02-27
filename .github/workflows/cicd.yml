@@ -46,7 +46,7 @@ jobs:
         run: pip install --upgrade pip && pip install autoflake black
 
       # -------------------------------
-      # Run Python formatting checks (code directory)
+      # Run Python formatting checks 
       # -------------------------------
       - name: Run Python formatting checks (code directory)
         shell: bash
