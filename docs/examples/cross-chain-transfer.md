@@ -33,25 +33,25 @@ npm install ethers@6
 ### Contract Configuration
 
 ```javascript
-const { ethers } = require('ethers');
+const { ethers } = require("ethers");
 
 // Contract addresses (update with deployed addresses)
-const CROSS_CHAIN_MANAGER_ADDRESS = '0x...'; // CrossChainManager contract
-const TOKEN_ADDRESS = '0x...'; // Token to transfer (ERC20)
+const CROSS_CHAIN_MANAGER_ADDRESS = "0x..."; // CrossChainManager contract
+const TOKEN_ADDRESS = "0x..."; // Token to transfer (ERC20)
 
 // Contract ABIs
 const CROSS_CHAIN_MANAGER_ABI = [
-    'function initiateCrossChainTransfer(address token, uint256 amount, uint64 targetChainSelector, address targetAddress) external returns (bytes32)',
-    'function transfers(bytes32 transferId) external view returns (address sender, address token, uint256 amount, uint256 targetChainId, address targetAddress, uint256 timestamp, bool completed, bytes32 ccipMessageId)',
-    'function supportedChains(uint64 chainSelector) external view returns (bool)',
-    'function transferLimit() external view returns (uint256)',
-    'function transferCooldown() external view returns (uint256)',
+  "function initiateCrossChainTransfer(address token, uint256 amount, uint64 targetChainSelector, address targetAddress) external returns (bytes32)",
+  "function transfers(bytes32 transferId) external view returns (address sender, address token, uint256 amount, uint256 targetChainId, address targetAddress, uint256 timestamp, bool completed, bytes32 ccipMessageId)",
+  "function supportedChains(uint64 chainSelector) external view returns (bool)",
+  "function transferLimit() external view returns (uint256)",
+  "function transferCooldown() external view returns (uint256)",
 ];
 
 const ERC20_ABI = [
-    'function approve(address spender, uint256 amount) external returns (bool)',
-    'function allowance(address owner, address spender) external view returns (uint256)',
-    'function balanceOf(address account) external view returns (uint256)',
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function allowance(address owner, address spender) external view returns (uint256)",
+  "function balanceOf(address account) external view returns (uint256)",
 ];
 ```
 
@@ -66,9 +66,9 @@ const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
 // Initialize contracts
 const crossChainManager = new ethers.Contract(
-    CROSS_CHAIN_MANAGER_ADDRESS,
-    CROSS_CHAIN_MANAGER_ABI,
-    wallet,
+  CROSS_CHAIN_MANAGER_ADDRESS,
+  CROSS_CHAIN_MANAGER_ABI,
+  wallet,
 );
 
 const token = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, wallet);
@@ -78,39 +78,40 @@ const token = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, wallet);
 
 ```javascript
 async function checkPrerequisites(amount, targetChainSelector) {
-    // 1. Check if target chain is supported
-    const isSupported = await crossChainManager.supportedChains(targetChainSelector);
-    if (!isSupported) {
-        throw new Error(`Chain selector ${targetChainSelector} is not supported`);
-    }
+  // 1. Check if target chain is supported
+  const isSupported =
+    await crossChainManager.supportedChains(targetChainSelector);
+  if (!isSupported) {
+    throw new Error(`Chain selector ${targetChainSelector} is not supported`);
+  }
 
-    // 2. Check token balance
-    const balance = await token.balanceOf(wallet.address);
-    console.log(`Token balance: ${ethers.formatEther(balance)}`);
+  // 2. Check token balance
+  const balance = await token.balanceOf(wallet.address);
+  console.log(`Token balance: ${ethers.formatEther(balance)}`);
 
-    if (balance < amount) {
-        throw new Error(
-            `Insufficient balance. Have: ${ethers.formatEther(balance)}, Need: ${ethers.formatEther(amount)}`,
-        );
-    }
+  if (balance < amount) {
+    throw new Error(
+      `Insufficient balance. Have: ${ethers.formatEther(balance)}, Need: ${ethers.formatEther(amount)}`,
+    );
+  }
 
-    // 3. Check transfer limits
-    const transferLimit = await crossChainManager.transferLimit();
-    console.log(`Transfer limit: ${ethers.formatEther(transferLimit)}`);
+  // 3. Check transfer limits
+  const transferLimit = await crossChainManager.transferLimit();
+  console.log(`Transfer limit: ${ethers.formatEther(transferLimit)}`);
 
-    if (amount > transferLimit) {
-        throw new Error(`Amount exceeds transfer limit`);
-    }
+  if (amount > transferLimit) {
+    throw new Error(`Amount exceeds transfer limit`);
+  }
 
-    // 4. Check ETH balance for gas
-    const ethBalance = await provider.getBalance(wallet.address);
-    console.log(`ETH balance: ${ethers.formatEther(ethBalance)}`);
+  // 4. Check ETH balance for gas
+  const ethBalance = await provider.getBalance(wallet.address);
+  console.log(`ETH balance: ${ethers.formatEther(ethBalance)}`);
 
-    if (ethBalance < ethers.parseEther('0.01')) {
-        console.warn('Low ETH balance for gas fees');
-    }
+  if (ethBalance < ethers.parseEther("0.01")) {
+    console.warn("Low ETH balance for gas fees");
+  }
 
-    return true;
+  return true;
 }
 ```
 
@@ -118,28 +119,31 @@ async function checkPrerequisites(amount, targetChainSelector) {
 
 ```javascript
 async function approveTokens(amount) {
-    console.log('Checking allowance...');
+  console.log("Checking allowance...");
 
-    // Check current allowance
-    const currentAllowance = await token.allowance(wallet.address, CROSS_CHAIN_MANAGER_ADDRESS);
+  // Check current allowance
+  const currentAllowance = await token.allowance(
+    wallet.address,
+    CROSS_CHAIN_MANAGER_ADDRESS,
+  );
 
-    console.log(`Current allowance: ${ethers.formatEther(currentAllowance)}`);
+  console.log(`Current allowance: ${ethers.formatEther(currentAllowance)}`);
 
-    // If allowance is sufficient, skip approval
-    if (currentAllowance >= amount) {
-        console.log('Sufficient allowance already exists');
-        return;
-    }
+  // If allowance is sufficient, skip approval
+  if (currentAllowance >= amount) {
+    console.log("Sufficient allowance already exists");
+    return;
+  }
 
-    // Approve tokens
-    console.log('Approving tokens...');
-    const approveTx = await token.approve(CROSS_CHAIN_MANAGER_ADDRESS, amount);
+  // Approve tokens
+  console.log("Approving tokens...");
+  const approveTx = await token.approve(CROSS_CHAIN_MANAGER_ADDRESS, amount);
 
-    console.log(`Approval transaction sent: ${approveTx.hash}`);
-    console.log('Waiting for confirmation...');
+  console.log(`Approval transaction sent: ${approveTx.hash}`);
+  console.log("Waiting for confirmation...");
 
-    const approveReceipt = await approveTx.wait();
-    console.log(`✓ Tokens approved in block ${approveReceipt.blockNumber}`);
+  const approveReceipt = await approveTx.wait();
+  console.log(`✓ Tokens approved in block ${approveReceipt.blockNumber}`);
 }
 ```
 
@@ -147,48 +151,50 @@ async function approveTokens(amount) {
 
 ```javascript
 async function initiateCrossChainTransfer(
+  tokenAddress,
+  amount,
+  targetChainSelector,
+  targetAddress,
+) {
+  console.log("\n=== Initiating Cross-Chain Transfer ===");
+  console.log(`Token: ${tokenAddress}`);
+  console.log(`Amount: ${ethers.formatEther(amount)}`);
+  console.log(`Target Chain Selector: ${targetChainSelector}`);
+  console.log(`Target Address: ${targetAddress}`);
+
+  // Initiate transfer
+  const tx = await crossChainManager.initiateCrossChainTransfer(
     tokenAddress,
     amount,
     targetChainSelector,
     targetAddress,
-) {
-    console.log('\n=== Initiating Cross-Chain Transfer ===');
-    console.log(`Token: ${tokenAddress}`);
-    console.log(`Amount: ${ethers.formatEther(amount)}`);
-    console.log(`Target Chain Selector: ${targetChainSelector}`);
-    console.log(`Target Address: ${targetAddress}`);
+    {
+      gasLimit: 500000, // Adjust as needed
+    },
+  );
 
-    // Initiate transfer
-    const tx = await crossChainManager.initiateCrossChainTransfer(
-        tokenAddress,
-        amount,
-        targetChainSelector,
-        targetAddress,
-        {
-            gasLimit: 500000, // Adjust as needed
-        },
-    );
+  console.log(`\nTransaction sent: ${tx.hash}`);
+  console.log("Waiting for confirmation...");
 
-    console.log(`\nTransaction sent: ${tx.hash}`);
-    console.log('Waiting for confirmation...');
+  const receipt = await tx.wait();
+  console.log(`✓ Transfer initiated in block ${receipt.blockNumber}`);
 
-    const receipt = await tx.wait();
-    console.log(`✓ Transfer initiated in block ${receipt.blockNumber}`);
+  // Extract transfer ID from event
+  const transferInitiatedEvent = receipt.logs.find(
+    (log) =>
+      log.topics[0] ===
+      ethers.id(
+        "TransferInitiated(bytes32,address,address,uint256,uint64,address,bytes32)",
+      ),
+  );
 
-    // Extract transfer ID from event
-    const transferInitiatedEvent = receipt.logs.find(
-        (log) =>
-            log.topics[0] ===
-            ethers.id('TransferInitiated(bytes32,address,address,uint256,uint64,address,bytes32)'),
-    );
+  if (transferInitiatedEvent) {
+    const transferId = transferInitiatedEvent.topics[1];
+    console.log(`\nTransfer ID: ${transferId}`);
+    return transferId;
+  }
 
-    if (transferInitiatedEvent) {
-        const transferId = transferInitiatedEvent.topics[1];
-        console.log(`\nTransfer ID: ${transferId}`);
-        return transferId;
-    }
-
-    throw new Error('TransferInitiated event not found');
+  throw new Error("TransferInitiated event not found");
 }
 ```
 
@@ -196,40 +202,40 @@ async function initiateCrossChainTransfer(
 
 ```javascript
 async function monitorTransferStatus(transferId) {
-    console.log('\n=== Monitoring Transfer Status ===');
+  console.log("\n=== Monitoring Transfer Status ===");
 
-    const maxAttempts = 60;
-    const pollInterval = 10000; // 10 seconds
+  const maxAttempts = 60;
+  const pollInterval = 10000; // 10 seconds
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        console.log(`\nAttempt ${attempt}/${maxAttempts}...`);
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    console.log(`\nAttempt ${attempt}/${maxAttempts}...`);
 
-        // Get transfer details
-        const transfer = await crossChainManager.transfers(transferId);
+    // Get transfer details
+    const transfer = await crossChainManager.transfers(transferId);
 
-        console.log('Transfer details:');
-        console.log(`  Sender: ${transfer.sender}`);
-        console.log(`  Token: ${transfer.token}`);
-        console.log(`  Amount: ${ethers.formatEther(transfer.amount)}`);
-        console.log(`  Target Chain: ${transfer.targetChainId}`);
-        console.log(`  Target Address: ${transfer.targetAddress}`);
-        console.log(`  Completed: ${transfer.completed}`);
-        console.log(`  CCIP Message ID: ${transfer.ccipMessageId}`);
+    console.log("Transfer details:");
+    console.log(`  Sender: ${transfer.sender}`);
+    console.log(`  Token: ${transfer.token}`);
+    console.log(`  Amount: ${ethers.formatEther(transfer.amount)}`);
+    console.log(`  Target Chain: ${transfer.targetChainId}`);
+    console.log(`  Target Address: ${transfer.targetAddress}`);
+    console.log(`  Completed: ${transfer.completed}`);
+    console.log(`  CCIP Message ID: ${transfer.ccipMessageId}`);
 
-        if (transfer.completed) {
-            console.log('\n✓ Transfer completed successfully!');
-            return true;
-        }
-
-        // Wait before next check
-        if (attempt < maxAttempts) {
-            console.log(`Waiting ${pollInterval / 1000} seconds...`);
-            await new Promise((resolve) => setTimeout(resolve, pollInterval));
-        }
+    if (transfer.completed) {
+      console.log("\n✓ Transfer completed successfully!");
+      return true;
     }
 
-    console.log('\n⚠ Transfer monitoring timeout. Check manually.');
-    return false;
+    // Wait before next check
+    if (attempt < maxAttempts) {
+      console.log(`Waiting ${pollInterval / 1000} seconds...`);
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
+  }
+
+  console.log("\n⚠ Transfer monitoring timeout. Check manually.");
+  return false;
 }
 ```
 
@@ -237,51 +243,51 @@ async function monitorTransferStatus(transferId) {
 
 ```javascript
 async function main() {
-    try {
-        // Configuration
-        const amount = ethers.parseEther('10'); // 10 tokens
-        const targetChainSelector = 4051577828743386545n; // Polygon
-        const targetAddress = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0';
+  try {
+    // Configuration
+    const amount = ethers.parseEther("10"); // 10 tokens
+    const targetChainSelector = 4051577828743386545n; // Polygon
+    const targetAddress = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0";
 
-        console.log('=== ChainFinity Cross-Chain Transfer ===\n');
-        console.log(`Source: Ethereum`);
-        console.log(`Target: Polygon`);
-        console.log(`Amount: ${ethers.formatEther(amount)} tokens`);
-        console.log(`Recipient: ${targetAddress}\n`);
+    console.log("=== ChainFinity Cross-Chain Transfer ===\n");
+    console.log(`Source: Ethereum`);
+    console.log(`Target: Polygon`);
+    console.log(`Amount: ${ethers.formatEther(amount)} tokens`);
+    console.log(`Recipient: ${targetAddress}\n`);
 
-        // Step 1: Check prerequisites
-        console.log('Step 1: Checking prerequisites...');
-        await checkPrerequisites(amount, targetChainSelector);
-        console.log('✓ Prerequisites check passed\n');
+    // Step 1: Check prerequisites
+    console.log("Step 1: Checking prerequisites...");
+    await checkPrerequisites(amount, targetChainSelector);
+    console.log("✓ Prerequisites check passed\n");
 
-        // Step 2: Approve tokens
-        console.log('Step 2: Approving tokens...');
-        await approveTokens(amount);
-        console.log('✓ Token approval completed\n');
+    // Step 2: Approve tokens
+    console.log("Step 2: Approving tokens...");
+    await approveTokens(amount);
+    console.log("✓ Token approval completed\n");
 
-        // Step 3: Initiate transfer
-        console.log('Step 3: Initiating cross-chain transfer...');
-        const transferId = await initiateCrossChainTransfer(
-            TOKEN_ADDRESS,
-            amount,
-            targetChainSelector,
-            targetAddress,
-        );
-        console.log('✓ Transfer initiated\n');
+    // Step 3: Initiate transfer
+    console.log("Step 3: Initiating cross-chain transfer...");
+    const transferId = await initiateCrossChainTransfer(
+      TOKEN_ADDRESS,
+      amount,
+      targetChainSelector,
+      targetAddress,
+    );
+    console.log("✓ Transfer initiated\n");
 
-        // Step 4: Monitor status
-        console.log('Step 4: Monitoring transfer status...');
-        await monitorTransferStatus(transferId);
+    // Step 4: Monitor status
+    console.log("Step 4: Monitoring transfer status...");
+    await monitorTransferStatus(transferId);
 
-        console.log('\n=== Transfer Complete ===');
-        console.log(`Transfer ID: ${transferId}`);
-        console.log('Check your wallet on the target chain!');
-    } catch (error) {
-        console.error('\n❌ Error:', error.message);
-        if (error.reason) console.error('Reason:', error.reason);
-        if (error.code) console.error('Code:', error.code);
-        process.exit(1);
-    }
+    console.log("\n=== Transfer Complete ===");
+    console.log(`Transfer ID: ${transferId}`);
+    console.log("Check your wallet on the target chain!");
+  } catch (error) {
+    console.error("\n❌ Error:", error.message);
+    if (error.reason) console.error("Reason:", error.reason);
+    if (error.code) console.error("Code:", error.code);
+    process.exit(1);
+  }
 }
 
 // Run the example

@@ -397,15 +397,15 @@ curl -H "Origin: http://localhost:3000" \
 
 ```json
 {
-    "success": false,
-    "error": "Validation error",
-    "details": [
-        {
-            "field": "body -> password",
-            "message": "ensure this value has at least 8 characters",
-            "type": "value_error.any_str.min_length"
-        }
-    ]
+  "success": false,
+  "error": "Validation error",
+  "details": [
+    {
+      "field": "body -> password",
+      "message": "ensure this value has at least 8 characters",
+      "type": "value_error.any_str.min_length"
+    }
+  ]
 }
 ```
 
@@ -436,7 +436,7 @@ Error: transaction reverted without a reason string
 
 ```javascript
 const tx = await contract.someFunction({
-    gasLimit: 500000, // Increase if needed
+  gasLimit: 500000, // Increase if needed
 });
 ```
 
@@ -451,8 +451,8 @@ require(balance >= amount, "Insufficient balance");
 **3. Debug with Hardhat console:**
 
 ```javascript
-const hardhat = require('hardhat');
-await hardhat.network.provider.send('hardhat_setLoggingEnabled', [true]);
+const hardhat = require("hardhat");
+await hardhat.network.provider.send("hardhat_setLoggingEnabled", [true]);
 ```
 
 ### Issue: Insufficient Funds for Gas
@@ -477,7 +477,7 @@ Error: insufficient funds for gas * price + value
 
 ```javascript
 const tx = await contract.someFunction({
-    gasPrice: ethers.utils.parseUnits('20', 'gwei'),
+  gasPrice: ethers.utils.parseUnits("20", "gwei"),
 });
 ```
 
@@ -512,12 +512,12 @@ Error: network mismatch (chainId 1337, expected 1)
 ```javascript
 // Check network in MetaMask or wallet
 const network = await provider.getNetwork();
-console.log('Connected to network:', network.chainId);
+console.log("Connected to network:", network.chainId);
 
 // Switch network programmatically
 await window.ethereum.request({
-    method: 'wallet_switchEthereumChain',
-    params: [{ chainId: '0x1' }], // Mainnet
+  method: "wallet_switchEthereumChain",
+  params: [{ chainId: "0x1" }], // Mainnet
 });
 ```
 
@@ -592,28 +592,28 @@ No Ethereum provider found. Install MetaMask.
 
 ```javascript
 const detectProvider = async () => {
+  if (window.ethereum) {
+    return window.ethereum;
+  }
+
+  // Wait for provider injection
+  let provider = null;
+  for (let i = 0; i < 10; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
     if (window.ethereum) {
-        return window.ethereum;
+      provider = window.ethereum;
+      break;
     }
+  }
 
-    // Wait for provider injection
-    let provider = null;
-    for (let i = 0; i < 10; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        if (window.ethereum) {
-            provider = window.ethereum;
-            break;
-        }
-    }
-
-    return provider;
+  return provider;
 };
 ```
 
 **3. Request account access:**
 
 ```javascript
-await window.ethereum.request({ method: 'eth_requestAccounts' });
+await window.ethereum.request({ method: "eth_requestAccounts" });
 ```
 
 ## Performance Issues
@@ -759,23 +759,23 @@ kubectl describe pod pod-name -n chainfinity
 ```yaml
 # Update deployment.yaml with required env vars
 env:
-    - name: DATABASE_URL
-      valueFrom:
-          secretKeyRef:
-              name: chainfinity-secrets
-              key: database-url
+  - name: DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: chainfinity-secrets
+        key: database-url
 ```
 
 **2. Resource limits too low:**
 
 ```yaml
 resources:
-    requests:
-        memory: '512Mi'
-        cpu: '500m'
-    limits:
-        memory: '2Gi'
-        cpu: '2000m'
+  requests:
+    memory: "512Mi"
+    cpu: "500m"
+  limits:
+    memory: "2Gi"
+    cpu: "2000m"
 ```
 
 ### Issue: Database Migrations Fail
@@ -819,37 +819,37 @@ If you can't find a solution here:
 
 1. **Check logs:**
 
-    ```bash
-    # Backend logs
-    tail -f logs/backend.log
+   ```bash
+   # Backend logs
+   tail -f logs/backend.log
 
-    # Docker logs
-    docker-compose logs -f
+   # Docker logs
+   docker-compose logs -f
 
-    # Kubernetes logs
-    kubectl logs -f deployment/chainfinity-api -n chainfinity
-    ```
+   # Kubernetes logs
+   kubectl logs -f deployment/chainfinity-api -n chainfinity
+   ```
 
 2. **Enable debug mode:**
 
-    ```bash
-    # In .env
-    DEBUG=true
-    LOG_LEVEL=DEBUG
-    ```
+   ```bash
+   # In .env
+   DEBUG=true
+   LOG_LEVEL=DEBUG
+   ```
 
 3. **Search existing issues:**
-    - https://github.com/abrar2030/ChainFinity/issues
+   - https://github.com/abrar2030/ChainFinity/issues
 
 4. **Create a new issue:**
-    - Include error messages
-    - Include steps to reproduce
-    - Include environment details
-    - Include relevant logs
+   - Include error messages
+   - Include steps to reproduce
+   - Include environment details
+   - Include relevant logs
 
 5. **Join community:**
-    - GitHub Discussions
-    - Project README for contact info
+   - GitHub Discussions
+   - Project README for contact info
 
 ## Quick Reference
 

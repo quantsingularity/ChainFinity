@@ -274,20 +274,20 @@ graph LR
 **Models:**
 
 1. **Volatility Prediction (LSTM)**
-    - Input: Historical price data (60-day window)
-    - Output: Predicted volatility for next 30 days
-    - Architecture: 2-layer LSTM + Dense layers
-    - Training: `train_correlation_model.py`
+   - Input: Historical price data (60-day window)
+   - Output: Predicted volatility for next 30 days
+   - Architecture: 2-layer LSTM + Dense layers
+   - Training: `train_correlation_model.py`
 
 2. **Correlation Analysis**
-    - Statistical correlation matrix across assets
-    - Cross-chain correlation detection
-    - Contagion risk identification
+   - Statistical correlation matrix across assets
+   - Cross-chain correlation detection
+   - Contagion risk identification
 
 3. **Anomaly Detection**
-    - Unsupervised learning for unusual patterns
-    - Transaction behavior analysis
-    - Protocol exploit prediction
+   - Unsupervised learning for unusual patterns
+   - Transaction behavior analysis
+   - Protocol exploit prediction
 
 **Data Pipeline:**
 

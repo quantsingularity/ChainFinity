@@ -92,8 +92,8 @@ curl -X GET http://localhost:8000/api/v1/users/me \
 2. Click "Create Portfolio"
 3. Enter portfolio name and description
 4. Add assets by:
-    - Entering wallet address for auto-import
-    - Manually adding token holdings
+   - Entering wallet address for auto-import
+   - Manually adding token holdings
 5. View portfolio analytics and risk metrics
 
 #### Via API
@@ -370,73 +370,76 @@ print(f"Risk score: {risk['risk_score']}")
 ### JavaScript/Node.js Client Example
 
 ```javascript
-const axios = require('axios');
+const axios = require("axios");
 
 class ChainFinityClient {
-    constructor(baseUrl = 'http://localhost:8000') {
-        this.baseUrl = `${baseUrl}/api/v1`;
-        this.token = null;
-    }
+  constructor(baseUrl = "http://localhost:8000") {
+    this.baseUrl = `${baseUrl}/api/v1`;
+    this.token = null;
+  }
 
-    async login(email, password) {
-        const response = await axios.post(`${this.baseUrl}/auth/login`, {
-            email,
-            password,
-        });
-        this.token = response.data.access_token;
-        return response.data;
-    }
+  async login(email, password) {
+    const response = await axios.post(`${this.baseUrl}/auth/login`, {
+      email,
+      password,
+    });
+    this.token = response.data.access_token;
+    return response.data;
+  }
 
-    getHeaders() {
-        if (!this.token) {
-            throw new Error('Not authenticated. Call login() first.');
-        }
-        return {
-            Authorization: `Bearer ${this.token}`,
-        };
+  getHeaders() {
+    if (!this.token) {
+      throw new Error("Not authenticated. Call login() first.");
     }
+    return {
+      Authorization: `Bearer ${this.token}`,
+    };
+  }
 
-    async createPortfolio(name, description = '') {
-        const response = await axios.post(
-            `${this.baseUrl}/portfolios`,
-            { name, description },
-            { headers: this.getHeaders() },
-        );
-        return response.data;
-    }
+  async createPortfolio(name, description = "") {
+    const response = await axios.post(
+      `${this.baseUrl}/portfolios`,
+      { name, description },
+      { headers: this.getHeaders() },
+    );
+    return response.data;
+  }
 
-    async getPortfolios(page = 1, pageSize = 20) {
-        const response = await axios.get(`${this.baseUrl}/portfolios`, {
-            params: { page, page_size: pageSize },
-            headers: this.getHeaders(),
-        });
-        return response.data;
-    }
+  async getPortfolios(page = 1, pageSize = 20) {
+    const response = await axios.get(`${this.baseUrl}/portfolios`, {
+      params: { page, page_size: pageSize },
+      headers: this.getHeaders(),
+    });
+    return response.data;
+  }
 
-    async assessRisk(portfolioId) {
-        const response = await axios.post(
-            `${this.baseUrl}/risk/assess/${portfolioId}`,
-            {},
-            { headers: this.getHeaders() },
-        );
-        return response.data;
-    }
+  async assessRisk(portfolioId) {
+    const response = await axios.post(
+      `${this.baseUrl}/risk/assess/${portfolioId}`,
+      {},
+      { headers: this.getHeaders() },
+    );
+    return response.data;
+  }
 }
 
 // Usage
 (async () => {
-    const client = new ChainFinityClient();
+  const client = new ChainFinityClient();
 
-    // Login
-    await client.login('user@example.com', 'SecureP@ss123');
+  // Login
+  await client.login("user@example.com", "SecureP@ss123");
 
-    // Create portfolio
-    const portfolio = await client.createPortfolio('My DeFi Portfolio', 'Yield farming positions');
-    console.log(`Created portfolio: ${portfolio.id}`);
+  // Create portfolio
+  const portfolio = await client.createPortfolio(
+    "My DeFi Portfolio",
+    "Yield farming positions",
+  );
+  console.log(`Created portfolio: ${portfolio.id}`);
 
-    // Assess risk
-    const risk = await client.assessRisk(portfolio.id);
-    console.log(`Risk score: ${risk.risk_score}`);
+  // Assess risk
+  const risk = await client.assessRisk(portfolio.id);
+  console.log(`Risk score: ${risk.risk_score}`);
 })();
 ```
 
@@ -446,39 +449,39 @@ class ChainFinityClient {
 
 ```javascript
 // Example: Interacting with AssetVault contract
-const { ethers } = require('ethers');
+const { ethers } = require("ethers");
 
 // Setup
 const provider = new ethers.providers.JsonRpcProvider(process.env.ETH_RPC_URL);
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 const vaultAddress = process.env.ASSET_VAULT_ADDRESS;
-const vaultABI = require('./abis/AssetVault.json');
+const vaultABI = require("./abis/AssetVault.json");
 const vault = new ethers.Contract(vaultAddress, vaultABI, wallet);
 
 // Deposit tokens
 async function depositTokens(tokenAddress, amount) {
-    // Approve token spend
-    const token = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);
-    const approveTx = await token.approve(vaultAddress, amount);
-    await approveTx.wait();
+  // Approve token spend
+  const token = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);
+  const approveTx = await token.approve(vaultAddress, amount);
+  await approveTx.wait();
 
-    // Deposit
-    const depositTx = await vault.deposit(tokenAddress, amount);
-    await depositTx.wait();
-    console.log('Deposit successful:', depositTx.hash);
+  // Deposit
+  const depositTx = await vault.deposit(tokenAddress, amount);
+  await depositTx.wait();
+  console.log("Deposit successful:", depositTx.hash);
 }
 
 // Withdraw tokens
 async function withdrawTokens(tokenAddress, amount) {
-    const withdrawTx = await vault.withdraw(tokenAddress, amount);
-    await withdrawTx.wait();
-    console.log('Withdrawal successful:', withdrawTx.hash);
+  const withdrawTx = await vault.withdraw(tokenAddress, amount);
+  await withdrawTx.wait();
+  console.log("Withdrawal successful:", withdrawTx.hash);
 }
 
 // Get balance
 async function getBalance(tokenAddress, userAddress) {
-    const balance = await vault.balanceOf(userAddress, tokenAddress);
-    return ethers.utils.formatEther(balance);
+  const balance = await vault.balanceOf(userAddress, tokenAddress);
+  return ethers.utils.formatEther(balance);
 }
 ```
 
@@ -487,30 +490,30 @@ async function getBalance(tokenAddress, userAddress) {
 ### Web Dashboard
 
 1. **Dashboard Overview**
-    - View total portfolio value across all chains
-    - Monitor real-time price changes
-    - Check risk score and alerts
+   - View total portfolio value across all chains
+   - Monitor real-time price changes
+   - Check risk score and alerts
 
 2. **Portfolio Management**
-    - Create/edit/delete portfolios
-    - Add assets manually or via wallet import
-    - View asset allocation charts
+   - Create/edit/delete portfolios
+   - Add assets manually or via wallet import
+   - View asset allocation charts
 
 3. **Risk Analysis**
-    - Run risk assessments
-    - View historical risk metrics
-    - Get AI-powered recommendations
+   - Run risk assessments
+   - View historical risk metrics
+   - Get AI-powered recommendations
 
 4. **Transaction History**
-    - View all transactions across chains
-    - Filter by date, type, status
-    - Export to CSV
+   - View all transactions across chains
+   - Filter by date, type, status
+   - Export to CSV
 
 5. **Settings**
-    - Update profile and preferences
-    - Configure notifications
-    - Manage API keys
-    - Set up MFA
+   - Update profile and preferences
+   - Configure notifications
+   - Manage API keys
+   - Set up MFA
 
 ### Mobile App
 
@@ -525,38 +528,38 @@ Similar functionality to web dashboard, optimized for mobile:
 
 ```javascript
 // Connect to WebSocket
-const ws = new WebSocket('ws://localhost:8000/ws/prices');
+const ws = new WebSocket("ws://localhost:8000/ws/prices");
 
 // Authenticate
 ws.onopen = () => {
-    ws.send(
-        JSON.stringify({
-            type: 'auth',
-            token: accessToken,
-        }),
-    );
+  ws.send(
+    JSON.stringify({
+      type: "auth",
+      token: accessToken,
+    }),
+  );
 };
 
 // Receive price updates
 ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    if (data.type === 'price_update') {
-        console.log(`${data.data.symbol}: $${data.data.price}`);
-        // Update UI with new price
-    }
+  const data = JSON.parse(event.data);
+  if (data.type === "price_update") {
+    console.log(`${data.data.symbol}: $${data.data.price}`);
+    // Update UI with new price
+  }
 };
 
 // Handle errors
 ws.onerror = (error) => {
-    console.error('WebSocket error:', error);
+  console.error("WebSocket error:", error);
 };
 
 // Subscribe to specific assets
 ws.send(
-    JSON.stringify({
-        type: 'subscribe',
-        symbols: ['ETH', 'BTC', 'USDC'],
-    }),
+  JSON.stringify({
+    type: "subscribe",
+    symbols: ["ETH", "BTC", "USDC"],
+  }),
 );
 ```
 

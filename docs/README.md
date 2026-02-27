@@ -28,9 +28,9 @@ Get started with ChainFinity in three simple steps:
 ### Examples & Tutorials
 
 - [Examples Directory](./examples/) — Working code examples demonstrating key features:
-    - [Cross-Chain Transfer Example](./examples/cross-chain-transfer.md)
-    - [Risk Analysis Example](./examples/risk-analysis.md)
-    - [Portfolio Management Example](./examples/portfolio-management.md)
+  - [Cross-Chain Transfer Example](./examples/cross-chain-transfer.md)
+  - [Risk Analysis Example](./examples/risk-analysis.md)
+  - [Portfolio Management Example](./examples/portfolio-management.md)
 
 ### Development & Operations
 

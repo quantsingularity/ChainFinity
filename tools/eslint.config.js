@@ -6,27 +6,27 @@ import tsParser from '@typescript-eslint/parser';
 import prettier from 'eslint-plugin-prettier';
 
 export default [
-    js.configs.recommended,
+  js.configs.recommended,
 
-    {
-        files: ['**/*.{js,jsx,ts,tsx}'],
+  {
+    files: ['**/*.{js,jsx,ts,tsx}'],
 
-        languageOptions: {
-            parser: tsParser,
-            parserOptions: {
-                ecmaVersion: 'latest',
-                sourceType: 'module',
-            },
-        },
-
-        plugins: {
-            '@typescript-eslint': ts,
-            prettier: prettier,
-        },
-
-        rules: {
-            ...ts.configs.recommended.rules,
-            'prettier/prettier': 'error',
-        },
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
     },
+
+    plugins: {
+      '@typescript-eslint': ts,
+      prettier: prettier,
+    },
+
+    rules: {
+      ...ts.configs.recommended.rules,
+      'prettier/prettier': 'error',
+    },
+  },
 ];

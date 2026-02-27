@@ -66,11 +66,11 @@ curl -X GET http://localhost:8000/api/v1/users/me \
 
 ```json
 {
-    "success": true,
-    "data": {
-        /* response data */
-    },
-    "message": "Optional success message"
+  "success": true,
+  "data": {
+    /* response data */
+  },
+  "message": "Optional success message"
 }
 ```
 
@@ -78,12 +78,12 @@ curl -X GET http://localhost:8000/api/v1/users/me \
 
 ```json
 {
-    "success": false,
-    "error": "Error description",
-    "code": "ERROR_CODE",
-    "details": [
-        /* optional error details */
-    ]
+  "success": false,
+  "error": "Error description",
+  "code": "ERROR_CODE",
+  "details": [
+    /* optional error details */
+  ]
 }
 ```
 
@@ -93,16 +93,16 @@ Paginated endpoints return:
 
 ```json
 {
-    "success": true,
-    "data": [
-        /* array of items */
-    ],
-    "pagination": {
-        "page": 1,
-        "page_size": 20,
-        "total": 150,
-        "pages": 8
-    }
+  "success": true,
+  "data": [
+    /* array of items */
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total": 150,
+    "pages": 8
+  }
 }
 ```
 
@@ -154,11 +154,11 @@ Register a new user account.
 
 ```json
 {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "email": "user@example.com",
-    "wallet_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
-    "kyc_status": "pending",
-    "created_at": "2025-01-08T12:00:00Z"
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "email": "user@example.com",
+  "wallet_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
+  "kyc_status": "pending",
+  "created_at": "2025-01-08T12:00:00Z"
 }
 ```
 
@@ -192,10 +192,10 @@ Authenticate user and receive JWT tokens.
 
 ```json
 {
-    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "token_type": "bearer",
-    "expires_in": 1800
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 1800
 }
 ```
 
@@ -221,9 +221,9 @@ Refresh access token using refresh token.
 
 ```json
 {
-    "access_token": "new_access_token",
-    "token_type": "bearer",
-    "expires_in": 1800
+  "access_token": "new_access_token",
+  "token_type": "bearer",
+  "expires_in": 1800
 }
 ```
 
@@ -237,8 +237,8 @@ Invalidate user session and tokens.
 
 ```json
 {
-    "success": true,
-    "message": "Successfully logged out"
+  "success": true,
+  "message": "Successfully logged out"
 }
 ```
 
@@ -254,13 +254,13 @@ Get current user profile.
 
 ```json
 {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "email": "user@example.com",
-    "wallet_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
-    "kyc_status": "verified",
-    "risk_profile": "moderate",
-    "created_at": "2025-01-08T12:00:00Z",
-    "updated_at": "2025-01-08T15:30:00Z"
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "email": "user@example.com",
+  "wallet_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
+  "kyc_status": "verified",
+  "risk_profile": "moderate",
+  "created_at": "2025-01-08T12:00:00Z",
+  "updated_at": "2025-01-08T15:30:00Z"
 }
 ```
 
@@ -307,23 +307,23 @@ List user's portfolios.
 
 ```json
 {
-    "data": [
-        {
-            "id": "portfolio-uuid",
-            "name": "Main Portfolio",
-            "total_value": "125430.50",
-            "total_value_usd": 125430.5,
-            "assets_count": 12,
-            "risk_score": 6.5,
-            "created_at": "2025-01-01T00:00:00Z"
-        }
-    ],
-    "pagination": {
-        "page": 1,
-        "page_size": 20,
-        "total": 3,
-        "pages": 1
+  "data": [
+    {
+      "id": "portfolio-uuid",
+      "name": "Main Portfolio",
+      "total_value": "125430.50",
+      "total_value_usd": 125430.5,
+      "assets_count": 12,
+      "risk_score": 6.5,
+      "created_at": "2025-01-01T00:00:00Z"
     }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total": 3,
+    "pages": 1
+  }
 }
 ```
 
@@ -379,25 +379,25 @@ Get detailed portfolio information.
 
 ```json
 {
-    "id": "portfolio-uuid",
-    "name": "Main Portfolio",
-    "description": "My main crypto portfolio",
-    "total_value_usd": 125430.5,
-    "assets": [
-        {
-            "token_address": "0x...",
-            "symbol": "ETH",
-            "amount": "10.5",
-            "value_usd": 25000.0,
-            "chain": "ethereum"
-        }
-    ],
-    "risk_metrics": {
-        "risk_score": 6.5,
-        "volatility": 0.45,
-        "sharpe_ratio": 1.8
-    },
-    "created_at": "2025-01-01T00:00:00Z"
+  "id": "portfolio-uuid",
+  "name": "Main Portfolio",
+  "description": "My main crypto portfolio",
+  "total_value_usd": 125430.5,
+  "assets": [
+    {
+      "token_address": "0x...",
+      "symbol": "ETH",
+      "amount": "10.5",
+      "value_usd": 25000.0,
+      "chain": "ethereum"
+    }
+  ],
+  "risk_metrics": {
+    "risk_score": 6.5,
+    "volatility": 0.45,
+    "sharpe_ratio": 1.8
+  },
+  "created_at": "2025-01-01T00:00:00Z"
 }
 ```
 
@@ -440,21 +440,21 @@ List user transactions.
 
 ```json
 {
-    "data": [
-        {
-            "id": "tx-uuid",
-            "hash": "0x123...",
-            "type": "transfer",
-            "status": "confirmed",
-            "amount": "100.00",
-            "token": "USDC",
-            "chain": "ethereum",
-            "timestamp": "2025-01-08T12:00:00Z"
-        }
-    ],
-    "pagination": {
-        /* ... */
+  "data": [
+    {
+      "id": "tx-uuid",
+      "hash": "0x123...",
+      "type": "transfer",
+      "status": "confirmed",
+      "amount": "100.00",
+      "token": "USDC",
+      "chain": "ethereum",
+      "timestamp": "2025-01-08T12:00:00Z"
     }
+  ],
+  "pagination": {
+    /* ... */
+  }
 }
 ```
 
@@ -499,17 +499,17 @@ List risk assessments.
 
 ```json
 {
-    "data": [
-        {
-            "id": "assessment-uuid",
-            "portfolio_id": "portfolio-uuid",
-            "risk_score": 6.5,
-            "volatility": 0.45,
-            "var_95": 0.15,
-            "sharpe_ratio": 1.8,
-            "created_at": "2025-01-08T12:00:00Z"
-        }
-    ]
+  "data": [
+    {
+      "id": "assessment-uuid",
+      "portfolio_id": "portfolio-uuid",
+      "risk_score": 6.5,
+      "volatility": 0.45,
+      "var_95": 0.15,
+      "sharpe_ratio": 1.8,
+      "created_at": "2025-01-08T12:00:00Z"
+    }
+  ]
 }
 ```
 
@@ -539,14 +539,14 @@ List compliance checks for current user.
 
 ```json
 {
-    "data": [
-        {
-            "id": "check-uuid",
-            "type": "kyc",
-            "status": "passed",
-            "completed_at": "2025-01-08T12:00:00Z"
-        }
-    ]
+  "data": [
+    {
+      "id": "check-uuid",
+      "type": "kyc",
+      "status": "passed",
+      "completed_at": "2025-01-08T12:00:00Z"
+    }
+  ]
 }
 ```
 
@@ -574,15 +574,15 @@ List supported blockchain networks.
 
 ```json
 {
-    "data": [
-        {
-            "id": "ethereum",
-            "name": "Ethereum",
-            "chain_id": 1,
-            "rpc_url": "https://...",
-            "explorer_url": "https://etherscan.io"
-        }
-    ]
+  "data": [
+    {
+      "id": "ethereum",
+      "name": "Ethereum",
+      "chain_id": 1,
+      "rpc_url": "https://...",
+      "explorer_url": "https://etherscan.io"
+    }
+  ]
 }
 ```
 
@@ -604,13 +604,13 @@ List deployed smart contracts.
 
 ```json
 {
-    "type": "price_update",
-    "data": {
-        "symbol": "ETH",
-        "price": 2500.0,
-        "change_24h": 0.05,
-        "timestamp": "2025-01-08T12:00:00Z"
-    }
+  "type": "price_update",
+  "data": {
+    "symbol": "ETH",
+    "price": 2500.0,
+    "change_24h": 0.05,
+    "timestamp": "2025-01-08T12:00:00Z"
+  }
 }
 ```
 
@@ -619,9 +619,9 @@ List deployed smart contracts.
 - **Default Limit:** 60 requests per minute per user
 - **Burst Allowance:** 100 requests
 - **Headers:**
-    - `X-RateLimit-Limit`: Total limit
-    - `X-RateLimit-Remaining`: Remaining requests
-    - `X-RateLimit-Reset`: Reset timestamp
+  - `X-RateLimit-Limit`: Total limit
+  - `X-RateLimit-Remaining`: Remaining requests
+  - `X-RateLimit-Reset`: Reset timestamp
 
 ## SDK Examples
 
@@ -647,22 +647,22 @@ portfolios = requests.get(f"{base_url}/portfolios", headers=headers).json()
 ### JavaScript
 
 ```javascript
-const BASE_URL = 'http://localhost:8000/api/v1';
+const BASE_URL = "http://localhost:8000/api/v1";
 
 // Login
 const response = await fetch(`${BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-        email: 'user@example.com',
-        password: 'SecureP@ss123',
-    }),
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    email: "user@example.com",
+    password: "SecureP@ss123",
+  }),
 });
 const { access_token } = await response.json();
 
 // Get portfolios
 const portfolios = await fetch(`${BASE_URL}/portfolios`, {
-    headers: { Authorization: `Bearer ${access_token}` },
+  headers: { Authorization: `Bearer ${access_token}` },
 }).then((r) => r.json());
 ```
 
