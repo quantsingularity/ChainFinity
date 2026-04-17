@@ -97,11 +97,11 @@ const Home = () => {
 
   const handleSubscribe = (e) => {
     e.preventDefault();
-    // Show success state - email is stored in state and cleared after
+    if (!email) return;
+    // Show success state and clear email field
     setSubscribed(true);
     setEmail("");
     setTimeout(() => setSubscribed(false), 4000);
-    setEmail("");
     // Here you would typically make an API call to subscribe the user
   };
 
@@ -863,6 +863,14 @@ const Home = () => {
                     Subscribe
                   </Button>
                 </Box>
+                {subscribed && (
+                  <Typography
+                    variant="body2"
+                    sx={{ mt: 2, color: "rgba(255,255,255,0.95)", fontWeight: 500 }}
+                  >
+                    ✓ You're subscribed! Thanks for joining.
+                  </Typography>
+                )}
               </Box>
             </motion.div>
           </motion.div>

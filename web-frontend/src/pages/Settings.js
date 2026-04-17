@@ -80,12 +80,14 @@ const Settings = () => {
   const [language, setLanguage] = useState("english");
   const [saveSuccess, setSaveSuccess] = useState(null);
 
-  // Profile form state
+  const { user: currentUser } = useApp();
+
+  // Profile form state - initialized from user context
   const [profileForm, setProfileForm] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
-    walletAddress: "0x1234...5678",
-    bio: "Blockchain enthusiast and crypto investor since 2017.",
+    name: currentUser?.name || "Anonymous User",
+    email: currentUser?.email || "",
+    walletAddress: currentUser?.wallet_address || "",
+    bio: currentUser?.bio || "Blockchain enthusiast and DeFi explorer.",
   });
 
   // Security form state
@@ -128,6 +130,21 @@ const Settings = () => {
 
   const handleSaveSecurity = (e) => {
     e.preventDefault();
+    if (!securityForm.currentPassword) {
+      setSaveSuccess("error-no-current-password");
+      setTimeout(() => setSaveSuccess(null), 3000);
+      return;
+    }
+    if (securityForm.newPassword.length < 8) {
+      setSaveSuccess("error-password-too-short");
+      setTimeout(() => setSaveSuccess(null), 3000);
+      return;
+    }
+    if (securityForm.newPassword !== securityForm.confirmPassword) {
+      setSaveSuccess("error-password-mismatch");
+      setTimeout(() => setSaveSuccess(null), 3000);
+      return;
+    }
     setSaveSuccess("security");
     setSecurityForm({
       currentPassword: "",
@@ -188,10 +205,23 @@ const Settings = () => {
               }}
             >
               <Collapse in={Boolean(saveSuccess)}>
-                <Alert severity="success" sx={{ mb: 2 }}>
+                <Alert
+                  severity={
+                    saveSuccess?.startsWith("error") ? "error" : "success"
+                  }
+                  sx={{ mb: 2 }}
+                >
                   {saveSuccess === "profile"
                     ? "Profile updated successfully!"
-                    : "Security settings saved successfully!"}
+                    : saveSuccess === "security"
+                      ? "Security settings updated successfully!"
+                      : saveSuccess === "error-password-mismatch"
+                        ? "New passwords do not match."
+                        : saveSuccess === "error-password-too-short"
+                          ? "New password must be at least 8 characters."
+                          : saveSuccess === "error-no-current-password"
+                            ? "Please enter your current password."
+                            : "Settings saved."}
                 </Alert>
               </Collapse>
               <Tabs

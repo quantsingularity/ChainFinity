@@ -339,36 +339,36 @@ npm run lint
    // SPDX-License-Identifier: MIT
    pragma solidity ^0.8.19;
 
-   import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
-   import '@openzeppelin/contracts/access/AccessControl.sol';
+   import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+   import "@openzeppelin/contracts/access/AccessControl.sol";
 
    /**
     * @title ContractName
     * @dev Contract description
     */
    contract ContractName is ReentrancyGuard, AccessControl {
-       // State variables
-       uint256 public totalValue;
-       mapping(address => uint256) public balances;
+     // State variables
+     uint256 public totalValue;
+     mapping(address => uint256) public balances;
 
-       // Events
-       event Deposit(address indexed user, uint256 amount);
+     // Events
+     event Deposit(address indexed user, uint256 amount);
 
-       // Modifiers
-       modifier onlyPositive(uint256 amount) {
-           require(amount > 0, 'Amount must be positive');
-           _;
-       }
+     // Modifiers
+     modifier onlyPositive(uint256 amount) {
+       require(amount > 0, "Amount must be positive");
+       _;
+     }
 
-       // Constructor
-       constructor(address admin) {
-           _grantRole(DEFAULT_ADMIN_ROLE, admin);
-       }
+     // Constructor
+     constructor(address admin) {
+       _grantRole(DEFAULT_ADMIN_ROLE, admin);
+     }
 
-       // External functions
-       // Public functions
-       // Internal functions
-       // Private functions
+     // External functions
+     // Public functions
+     // Internal functions
+     // Private functions
    }
    ```
 
@@ -382,8 +382,11 @@ npm run lint
     * @param amount Amount to deposit
     * @return success Whether deposit was successful
     */
-   function deposit(address token, uint256 amount) external nonReentrant returns (bool success) {
-       // Implementation
+   function deposit(
+     address token,
+     uint256 amount
+   ) external nonReentrant returns (bool success) {
+     // Implementation
    }
    ```
 

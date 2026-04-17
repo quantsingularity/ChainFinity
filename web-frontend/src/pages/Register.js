@@ -136,9 +136,13 @@ const Register = () => {
         navigate("/login", {
           state: {
             message:
-              "Registration successful! Please log in with your new account.",
+              "Registration successful! Please sign in with your new account.",
           },
         });
+      } else {
+        setFormError(
+          result.error?.message || "Registration failed. Please try again.",
+        );
       }
     } catch (_err) {
       setFormError("An unexpected error occurred. Please try again.");

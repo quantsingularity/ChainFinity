@@ -154,7 +154,9 @@ const Dashboard = () => {
   const assetAllocation = portfolio?.assets
     ? portfolio.assets.map((asset) => ({
         name: asset.symbol,
-        value: parseFloat(asset.balance) * parseFloat(asset.value_usd || 0),
+        value:
+          parseFloat(asset.balance) *
+          parseFloat(asset.value_usd || asset.value || 0),
       }))
     : [];
 
@@ -289,7 +291,16 @@ const Dashboard = () => {
                       fontWeight={700}
                       sx={{ mb: 1 }}
                     >
-                      ${portfolio?.total_value || "0.00"}
+                      $
+                      {portfolio?.total_value
+                        ? Number(portfolio.total_value).toLocaleString(
+                            "en-US",
+                            {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            },
+                          )
+                        : "0.00"}
                     </Typography>
                     <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
                       <ArrowUpward
@@ -475,8 +486,13 @@ const Dashboard = () => {
                           </Box>
                           <Typography variant="body2" fontWeight={500}>
                             $
-                            {parseFloat(asset.balance) *
-                              parseFloat(asset.value_usd || 0)}
+                            {(
+                              parseFloat(asset.balance || 0) *
+                              parseFloat(asset.value_usd || asset.value || 0)
+                            ).toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
                           </Typography>
                         </Box>
                       ))}
@@ -677,7 +693,9 @@ const Dashboard = () => {
                                 $
                                 {(
                                   parseFloat(asset.balance) *
-                                  parseFloat(asset.value_usd || 0)
+                                  parseFloat(
+                                    asset.value_usd || asset.value || 0,
+                                  )
                                 ).toFixed(2)}
                               </Typography>
                             </Grid>

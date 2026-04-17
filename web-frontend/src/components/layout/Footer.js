@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
+import { Link as RouterLink } from "react-router-dom";
 
 const FooterContainer = styled(Box)(({ theme }) => ({
   backgroundColor:
@@ -101,10 +102,18 @@ const Footer = () => {
               Product
             </Typography>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              <FooterLink href="#">Features</FooterLink>
-              <FooterLink href="#">Pricing</FooterLink>
-              <FooterLink href="#">Roadmap</FooterLink>
-              <FooterLink href="#">Changelog</FooterLink>
+              <FooterLink component={RouterLink} to="/#features">
+                Features
+              </FooterLink>
+              <FooterLink component={RouterLink} to="/portfolio">
+                Portfolio
+              </FooterLink>
+              <FooterLink component={RouterLink} to="/governance">
+                Governance
+              </FooterLink>
+              <FooterLink component={RouterLink} to="/dashboard">
+                Dashboard
+              </FooterLink>
             </Box>
           </Grid>
 
@@ -113,10 +122,34 @@ const Footer = () => {
               Resources
             </Typography>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              <FooterLink href="#">Documentation</FooterLink>
-              <FooterLink href="#">API Reference</FooterLink>
-              <FooterLink href="#">Tutorials</FooterLink>
-              <FooterLink href="#">Blog</FooterLink>
+              <FooterLink
+                href="https://docs.chainfinity.io"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Documentation
+              </FooterLink>
+              <FooterLink
+                href="https://docs.chainfinity.io/api"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                API Reference
+              </FooterLink>
+              <FooterLink
+                href="https://docs.chainfinity.io"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Tutorials
+              </FooterLink>
+              <FooterLink
+                href="https://blog.chainfinity.io"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Blog
+              </FooterLink>
             </Box>
           </Grid>
 
@@ -125,10 +158,18 @@ const Footer = () => {
               Company
             </Typography>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              <FooterLink href="#">About</FooterLink>
-              <FooterLink href="#">Careers</FooterLink>
-              <FooterLink href="#">Privacy Policy</FooterLink>
-              <FooterLink href="#">Terms of Service</FooterLink>
+              <FooterLink component={RouterLink} to="/">
+                About
+              </FooterLink>
+              <FooterLink href="mailto:careers@chainfinity.io">
+                Careers
+              </FooterLink>
+              <FooterLink component={RouterLink} to="/">
+                Privacy Policy
+              </FooterLink>
+              <FooterLink component={RouterLink} to="/">
+                Terms of Service
+              </FooterLink>
             </Box>
           </Grid>
         </Grid>

@@ -2,7 +2,6 @@ import {
   AccountBalanceWallet as WalletIcon,
   HowToVote as VoteIcon,
   Add as AddIcon,
-  Refresh as RefreshIcon,
 } from "@mui/icons-material";
 import {
   Alert,
@@ -11,7 +10,6 @@ import {
   Card,
   CardContent,
   Chip,
-  CircularProgress,
   Container,
   Grid,
   LinearProgress,
@@ -21,7 +19,6 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useApp } from "../../context/AppContext";
@@ -93,7 +90,7 @@ const MOCK_GOVERNANCE_DATA = {
 
 const Governance = () => {
   const theme = useTheme();
-  const { isAuthenticated, user } = useApp();
+  const { isAuthenticated } = useApp();
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(false);
   const [actionFeedback, setActionFeedback] = useState(null);

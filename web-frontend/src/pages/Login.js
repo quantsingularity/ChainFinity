@@ -26,7 +26,7 @@ import {
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useLocation } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 
 const AuthPaper = styled(Paper)(({ theme }) => ({
@@ -78,7 +78,9 @@ const SocialButton = styled(Button)(({ theme }) => ({
 const Login = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, error, loading, clearError } = useApp();
+  const successMessage = location.state?.message || "";
 
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -146,6 +148,11 @@ const Login = () => {
         </Box>
 
         <AuthPaper elevation={3}>
+          {successMessage && (
+            <Alert severity="success" sx={{ mb: 3 }}>
+              {successMessage}
+            </Alert>
+          )}
           {(error || formError) && (
             <Alert severity="error" sx={{ mb: 3 }}>
               {formError ||
@@ -305,9 +312,16 @@ const Login = () => {
               <SocialButton
                 fullWidth
                 variant="outlined"
-                onClick={() => {
+                onClick={async () => {
+                  clearError();
+                  setFormError("");
                   setEmail("guest@chainfinity.io");
                   setPassword("guest1234");
+                  const success = await login({
+                    email: "guest@chainfinity.io",
+                    password: "guest1234",
+                  });
+                  if (success) navigate("/dashboard");
                 }}
                 disabled={loading}
               >

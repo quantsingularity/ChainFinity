@@ -1,56 +1,28 @@
+// theme.js — kept for backward compatibility.
+// The active theme is created dynamically in src/index.js (getTheme).
+// Importing this file directly is deprecated; use the ThemeProvider from index.js.
+
 import { createTheme } from "@mui/material/styles";
 
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#2196f3",
-      light: "#64b5f6",
-      dark: "#1976d2",
+      main: "#6c63ff",
+      light: "#8f88ff",
+      dark: "#4b44cc",
     },
     secondary: {
-      main: "#f50057",
-      light: "#ff4081",
-      dark: "#c51162",
+      main: "#03dac6",
     },
     background: {
-      default: "#f5f5f5",
+      default: "#f8f9fa",
       paper: "#ffffff",
     },
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h1: {
-      fontSize: "2.5rem",
-      fontWeight: 500,
-    },
-    h2: {
-      fontSize: "2rem",
-      fontWeight: 500,
-    },
-    h3: {
-      fontSize: "1.75rem",
-      fontWeight: 500,
-    },
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
   },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-          textTransform: "none",
-          padding: "8px 16px",
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 12,
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-        },
-      },
-    },
-  },
+  shape: { borderRadius: 12 },
 });
 
 export default theme;

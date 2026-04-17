@@ -13,12 +13,6 @@ const NotFoundContainer = styled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
 }));
 
-const NotFoundImage = styled("img")(({ theme }) => ({
-  maxWidth: "100%",
-  height: "auto",
-  marginBottom: theme.spacing(4),
-}));
-
 const NotFound = () => {
   return (
     <Container maxWidth="md">
@@ -27,12 +21,51 @@ const NotFound = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
+          style={{ width: "100%" }}
         >
-          <NotFoundImage
-            src="/404-illustration.svg"
-            alt="Page Not Found"
-            sx={{ maxWidth: 400 }}
-          />
+          {/* Inline SVG illustration – no external file needed */}
+          <Box sx={{ mb: 4, display: "flex", justifyContent: "center" }}>
+            <svg
+              width="220"
+              height="160"
+              viewBox="0 0 220 160"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect
+                x="20"
+                y="40"
+                width="180"
+                height="100"
+                rx="12"
+                fill="#f0eeff"
+              />
+              <rect x="35" y="55" width="70" height="8" rx="4" fill="#c5bfff" />
+              <rect x="35" y="71" width="50" height="6" rx="3" fill="#ddd9ff" />
+              <rect x="35" y="85" width="60" height="6" rx="3" fill="#ddd9ff" />
+              <circle
+                cx="155"
+                cy="90"
+                r="30"
+                fill="#fff"
+                stroke="#6c63ff"
+                strokeWidth="3"
+              />
+              <text
+                x="155"
+                y="97"
+                textAnchor="middle"
+                fontSize="24"
+                fontWeight="bold"
+                fill="#6c63ff"
+              >
+                ?
+              </text>
+              <circle cx="155" cy="30" r="14" fill="#6c63ff" opacity="0.15" />
+              <circle cx="180" cy="50" r="8" fill="#3a36e0" opacity="0.1" />
+              <circle cx="130" cy="20" r="6" fill="#6c63ff" opacity="0.2" />
+            </svg>
+          </Box>
 
           <Typography
             variant="h2"
@@ -56,7 +89,7 @@ const NotFound = () => {
             variant="body1"
             color="text.secondary"
             paragraph
-            sx={{ maxWidth: 600, mx: "auto" }}
+            sx={{ maxWidth: 500, mx: "auto" }}
           >
             The page you are looking for might have been removed, had its name
             changed, or is temporarily unavailable.

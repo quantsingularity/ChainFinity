@@ -158,11 +158,17 @@ const Transactions = () => {
         }
 
         // Date range filter
-        if (startDate && new Date(transaction.date) < startDate) {
+        if (
+          startDate &&
+          new Date((transaction.timestamp || 0) * 1000) < startDate
+        ) {
           return false;
         }
 
-        if (endDate && new Date(transaction.date) > endDate) {
+        if (
+          endDate &&
+          new Date((transaction.timestamp || 0) * 1000) > endDate
+        ) {
           return false;
         }
 
@@ -272,6 +278,42 @@ const Transactions = () => {
                 sx={{
                   borderRadius: "12px",
                   boxShadow: "none",
+                }}
+                onClick={() => {
+                  const headers = [
+                    "Hash",
+                    "Type",
+                    "From",
+                    "To",
+                    "Value",
+                    "Token",
+                    "Network",
+                    "Status",
+                    "Date",
+                  ];
+                  const rows = filteredTransactions.map((tx) => [
+                    tx.hash,
+                    tx.type,
+                    tx.from,
+                    tx.to,
+                    tx.value,
+                    tx.token,
+                    tx.network,
+                    tx.status,
+                    tx.timestamp
+                      ? new Date(tx.timestamp * 1000).toLocaleString()
+                      : tx.date || "",
+                  ]);
+                  const csv = [headers, ...rows]
+                    .map((r) => r.join(","))
+                    .join("\n");
+                  const blob = new Blob([csv], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "transactions.csv";
+                  a.click();
+                  URL.revokeObjectURL(url);
                 }}
               >
                 Export CSV
@@ -449,7 +491,9 @@ const Transactions = () => {
                   <TableBody>
                     {paginatedTransactions.length > 0 ? (
                       paginatedTransactions.map((transaction) => (
-                        <StyledTableRow key={transaction.id}>
+                        <StyledTableRow
+                          key={transaction.id || transaction.hash}
+                        >
                           <StyledTableCell>
                             <Box
                               sx={{
@@ -499,13 +543,23 @@ const Transactions = () => {
                               }}
                             >
                               <Typography variant="body2">
-                                {transaction.date}
+                                {transaction.date ||
+                                  (transaction.timestamp
+                                    ? new Date(
+                                        transaction.timestamp * 1000,
+                                      ).toLocaleDateString()
+                                    : "—")}
                               </Typography>
                               <Typography
                                 variant="caption"
                                 color="text.secondary"
                               >
-                                {transaction.time}
+                                {transaction.time ||
+                                  (transaction.timestamp
+                                    ? new Date(
+                                        transaction.timestamp * 1000,
+                                      ).toLocaleTimeString()
+                                    : "")}
                               </Typography>
                             </Box>
                           </StyledTableCell>
@@ -671,7 +725,7 @@ const Transactions = () => {
                         <Typography variant="body2" fontWeight={500}>
                           {
                             transactions.filter(
-                              (tx) => tx.network === "Ethereum",
+                              (tx) => tx.network?.toLowerCase() === "ethereum",
                             ).length
                           }
                         </Typography>
@@ -689,7 +743,7 @@ const Transactions = () => {
                         <Typography variant="body2" fontWeight={500}>
                           {
                             transactions.filter(
-                              (tx) => tx.network === "Polygon",
+                              (tx) => tx.network?.toLowerCase() === "polygon",
                             ).length
                           }
                         </Typography>
@@ -707,7 +761,9 @@ const Transactions = () => {
                         <Typography variant="body2" fontWeight={500}>
                           {
                             transactions.filter(
-                              (tx) => tx.network === "Bitcoin",
+                              (tx) =>
+                                tx.network?.toLowerCase() === "bitcoin" ||
+                                tx.network?.toLowerCase() === "bsc",
                             ).length
                           }
                         </Typography>

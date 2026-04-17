@@ -12,20 +12,20 @@ import {
   YAxis,
 } from "recharts";
 import {
+  Box,
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
-import {
+  Tab,
   Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../components/ui/tabs";
+  Typography,
+  useTheme,
+} from "@mui/material";
+import { useState } from "react";
 
 const GovernanceAnalytics = ({ governanceData }) => {
-  // Sample data for charts - in production this would come from the governanceData prop
+  const theme = useTheme();
+  const [tab, setTab] = useState(0);
+
   const participationData = [
     { month: "Jan", participation: 45 },
     { month: "Feb", participation: 52 },
@@ -49,107 +49,109 @@ const GovernanceAnalytics = ({ governanceData }) => {
   ];
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Governance Analytics</CardTitle>
-      </CardHeader>
+    <Card
+      sx={{
+        border: (t) => `1px solid ${t.palette.divider}`,
+        boxShadow: "none",
+      }}
+    >
       <CardContent>
-        <Tabs defaultValue="participation" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="participation">Participation</TabsTrigger>
-            <TabsTrigger value="proposals">Proposals</TabsTrigger>
-            <TabsTrigger value="distribution">Distribution</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="participation" className="pt-4">
-            <h3 className="text-sm font-medium mb-4">
-              Monthly Voting Participation
-            </h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={participationData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value) => `${value}%`} />
-                  <Tooltip
-                    formatter={(value) => [`${value}%`, "Participation"]}
-                  />
-                  <Bar dataKey="participation" fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-xs text-gray-500 mt-4 text-center">
-              Average participation rate: 54.8%
-            </p>
-          </TabsContent>
-
-          <TabsContent value="proposals" className="pt-4">
-            <h3 className="text-sm font-medium mb-4">Proposal Outcomes</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={proposalStatusData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) =>
-                      `${name}: ${(percent * 100).toFixed(0)}%`
-                    }
-                  >
-                    {proposalStatusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Legend />
-                  <Tooltip formatter={(value) => [value, "Proposals"]} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-xs text-gray-500 mt-4 text-center">
-              Total proposals:{" "}
-              {proposalStatusData.reduce((sum, item) => sum + item.value, 0)}
-            </p>
-          </TabsContent>
-
-          <TabsContent value="distribution" className="pt-4">
-            <h3 className="text-sm font-medium mb-4">
-              Voting Power Distribution
-            </h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={votingDistributionData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) =>
-                      `${name}: ${(percent * 100).toFixed(0)}%`
-                    }
-                  >
-                    {votingDistributionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Legend />
-                  <Tooltip
-                    formatter={(value) => [`${value}%`, "Voting Power"]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-xs text-gray-500 mt-4 text-center">
-              Governance token holders: 1,245
-            </p>
-          </TabsContent>
+        <Typography variant="h6" fontWeight={600} gutterBottom>
+          Governance Analytics
+        </Typography>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
+          <Tab label="Participation" />
+          <Tab label="Proposals" />
+          <Tab label="Voting Distribution" />
         </Tabs>
+
+        {tab === 0 && (
+          <Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Monthly participation rate (%)
+            </Typography>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={participationData}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke={theme.palette.divider}
+                />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fill: theme.palette.text.secondary }}
+                />
+                <YAxis tick={{ fill: theme.palette.text.secondary }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: theme.palette.background.paper,
+                    border: `1px solid ${theme.palette.divider}`,
+                  }}
+                />
+                <Bar
+                  dataKey="participation"
+                  fill={theme.palette.primary.main}
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </Box>
+        )}
+
+        {tab === 1 && (
+          <Box sx={{ display: "flex", justifyContent: "center" }}>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={proposalStatusData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}`}
+                >
+                  {proposalStatusData.map((entry, index) => (
+                    <Cell key={index} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: theme.palette.background.paper,
+                    border: `1px solid ${theme.palette.divider}`,
+                  }}
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </Box>
+        )}
+
+        {tab === 2 && (
+          <Box sx={{ display: "flex", justifyContent: "center" }}>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={votingDistributionData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}%`}
+                >
+                  {votingDistributionData.map((entry, index) => (
+                    <Cell key={index} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: theme.palette.background.paper,
+                    border: `1px solid ${theme.palette.divider}`,
+                  }}
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </Box>
+        )}
       </CardContent>
     </Card>
   );

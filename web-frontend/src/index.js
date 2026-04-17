@@ -1,4 +1,3 @@
-import CssBaseline from "@mui/material/CssBaseline";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -7,7 +6,6 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AppProvider, useApp } from "./context/AppContext";
-import "./styles/globalStyles";
 
 const getTheme = (mode) =>
   createTheme({
@@ -85,7 +83,6 @@ const ThemedApp = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline />
       <LocalizationProvider dateAdapter={AdapterDateFns}>
         <App />
       </LocalizationProvider>

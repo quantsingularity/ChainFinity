@@ -36,16 +36,25 @@ export const AppProvider = ({ children }) => {
 
       if (token && storedUser) {
         try {
-          setUser(JSON.parse(storedUser));
+          const parsed = JSON.parse(storedUser);
+          setUser(parsed);
           setIsAuthenticated(true);
 
-          // Verify token is still valid by fetching current user
-          const response = await authAPI.getCurrentUser();
-          setUser(response.data);
+          // Attempt to verify token with backend (optional — fails gracefully)
+          try {
+            const response = await authAPI.getCurrentUser();
+            setUser(response.data);
+            localStorage.setItem("user", JSON.stringify(response.data));
+          } catch (_verifyErr) {
+            // Backend unreachable or token expired — keep cached user for now
+            // Only force logout on explicit 401 (invalid token)
+            if (_verifyErr?.response?.status === 401) {
+              logout();
+            }
+          }
         } catch (err) {
-          // Token is invalid or expired
+          // Corrupted localStorage data
           logout();
-          setError(handleApiError(err));
         }
       }
 
@@ -68,6 +77,26 @@ export const AppProvider = ({ children }) => {
   const login = async (credentials) => {
     setLoading(true);
     setError(null);
+
+    // Demo mode: allow guest login without backend
+    const isDemo =
+      credentials.email === "guest@chainfinity.io" ||
+      credentials.email === "demo@chainfinity.io";
+
+    if (isDemo) {
+      const demoUser = {
+        id: "demo-user",
+        name: "Demo User",
+        email: credentials.email,
+        wallet_address: "0xDEMO1234567890abcdef1234567890abcdef1234",
+      };
+      localStorage.setItem("token", "demo-token");
+      localStorage.setItem("user", JSON.stringify(demoUser));
+      setUser(demoUser);
+      setIsAuthenticated(true);
+      setLoading(false);
+      return true;
+    }
 
     try {
       const response = await authAPI.login(credentials);

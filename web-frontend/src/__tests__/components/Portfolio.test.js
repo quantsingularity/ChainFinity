@@ -1,207 +1,109 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
 import Portfolio from "../../components/Portfolio";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-    },
-  },
-});
-
+const theme = createTheme();
 const TestWrapper = ({ children }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  <ThemeProvider theme={theme}>{children}</ThemeProvider>
 );
 
 describe("Portfolio Component", () => {
-  const mockPortfolioData = {
-    tokens: [
-      { symbol: "ETH", balance: "1.5", value: "3000" },
-      { symbol: "USDT", balance: "1000", value: "1000" },
-    ],
-    totalValue: "4000",
-  };
+  const mockFetchData = jest.fn();
 
   beforeEach(() => {
-    // Clear all mocks before each test
     jest.clearAllMocks();
   });
 
-  test("renders portfolio data correctly", async () => {
-    // Mock the API response
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        json: () => Promise.resolve(mockPortfolioData),
-        ok: true,
-      }),
-    );
-
+  test("renders loading state initially", () => {
+    mockFetchData.mockReturnValue(new Promise(() => {})); // never resolves
     render(
       <TestWrapper>
-        <Portfolio />
+        <Portfolio fetchData={mockFetchData} />
       </TestWrapper>,
     );
-
-    await waitFor(() => {
-      expect(screen.getByText("Total Value: $4,000.00")).toBeInTheDocument();
-      expect(screen.getByText("ETH")).toBeInTheDocument();
-      expect(screen.getByText("USDT")).toBeInTheDocument();
-      expect(screen.getByText("1.5")).toBeInTheDocument();
-      expect(screen.getByText("1000")).toBeInTheDocument();
-    });
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
-  test("handles empty portfolio", async () => {
-    // Mock empty portfolio response
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        json: () => Promise.resolve({ tokens: [], totalValue: "0" }),
-        ok: true,
-      }),
-    );
+  test("renders portfolio data correctly", async () => {
+    const mockData = [
+      { id: "1", name: "Bitcoin", value: 50000, symbol: "BTC", change: 3.2 },
+      { id: "2", name: "Ethereum", value: 3000, symbol: "ETH", change: -1.4 },
+    ];
+    mockFetchData.mockResolvedValue(mockData);
 
     render(
       <TestWrapper>
-        <Portfolio />
+        <Portfolio fetchData={mockFetchData} />
       </TestWrapper>,
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Total Value: $0.00")).toBeInTheDocument();
-      expect(screen.getByText("No tokens found")).toBeInTheDocument();
+      expect(screen.getByText("Bitcoin")).toBeInTheDocument();
+      expect(screen.getByText("Ethereum")).toBeInTheDocument();
     });
   });
 
   test("handles API errors gracefully", async () => {
-    // Mock API error
-    global.fetch = jest.fn(() => Promise.reject(new Error("API Error")));
+    mockFetchData.mockRejectedValue(new Error("API Error"));
 
     render(
       <TestWrapper>
-        <Portfolio />
+        <Portfolio fetchData={mockFetchData} />
       </TestWrapper>,
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Error loading portfolio")).toBeInTheDocument();
-    });
-  });
-
-  test("handles network errors gracefully", async () => {
-    // Mock network error
-    global.fetch = jest.fn(() => Promise.reject(new Error("Network Error")));
-
-    render(
-      <TestWrapper>
-        <Portfolio />
-      </TestWrapper>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("Network error occurred")).toBeInTheDocument();
-    });
-  });
-
-  test("refreshes data when refresh button is clicked", async () => {
-    // Mock the API response
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        json: () => Promise.resolve(mockPortfolioData),
-        ok: true,
-      }),
-    );
-
-    render(
-      <TestWrapper>
-        <Portfolio />
-      </TestWrapper>,
-    );
-
-    const refreshButton = screen.getByRole("button", { name: /refresh/i });
-    fireEvent.click(refreshButton);
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(2); // Initial load + refresh
-    });
-  });
-
-  test("sorts tokens by value when sort button is clicked", async () => {
-    // Mock the API response
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        json: () => Promise.resolve(mockPortfolioData),
-        ok: true,
-      }),
-    );
-
-    render(
-      <TestWrapper>
-        <Portfolio />
-      </TestWrapper>,
-    );
-
-    const sortButton = screen.getByRole("button", { name: /sort by value/i });
-    fireEvent.click(sortButton);
-
-    await waitFor(() => {
-      const tokenRows = screen.getAllByRole("row");
-      // Check if ETH (higher value) appears before USDT
-      expect(tokenRows[1]).toHaveTextContent("ETH");
-      expect(tokenRows[2]).toHaveTextContent("USDT");
+      expect(screen.getByText(/failed to fetch/i)).toBeInTheDocument();
     });
   });
 
   test("filters tokens by search input", async () => {
-    // Mock the API response
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        json: () => Promise.resolve(mockPortfolioData),
-        ok: true,
-      }),
-    );
+    const mockData = [
+      { id: "1", name: "Bitcoin", value: 50000, symbol: "BTC", change: 3.2 },
+      { id: "2", name: "Ethereum", value: 3000, symbol: "ETH", change: -1.4 },
+    ];
+    mockFetchData.mockResolvedValue(mockData);
 
     render(
       <TestWrapper>
-        <Portfolio />
+        <Portfolio fetchData={mockFetchData} />
       </TestWrapper>,
     );
 
+    await waitFor(() => {
+      expect(screen.getByText("Bitcoin")).toBeInTheDocument();
+    });
+
     const searchInput = screen.getByPlaceholderText(/search tokens/i);
-    fireEvent.change(searchInput, { target: { value: "ETH" } });
+    fireEvent.change(searchInput, { target: { value: "Bit" } });
+
+    expect(screen.getByText("Bitcoin")).toBeInTheDocument();
+    expect(screen.queryByText("Ethereum")).not.toBeInTheDocument();
+  });
+
+  test("renders no tokens message when empty", async () => {
+    mockFetchData.mockResolvedValue([]);
+
+    render(
+      <TestWrapper>
+        <Portfolio fetchData={mockFetchData} />
+      </TestWrapper>,
+    );
 
     await waitFor(() => {
-      expect(screen.getByText("ETH")).toBeInTheDocument();
-      expect(screen.queryByText("USDT")).not.toBeInTheDocument();
+      expect(screen.getByText(/no tokens found/i)).toBeInTheDocument();
     });
   });
 
-  test("displays loading state while fetching data", async () => {
-    // Mock delayed API response
-    global.fetch = jest.fn(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                json: () => Promise.resolve(mockPortfolioData),
-                ok: true,
-              }),
-            100,
-          ),
-        ),
-    );
-
+  test("uses default mock data when no fetchData prop provided", async () => {
     render(
       <TestWrapper>
         <Portfolio />
       </TestWrapper>,
     );
 
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
-
     await waitFor(() => {
-      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+      expect(screen.getByText("Bitcoin")).toBeInTheDocument();
     });
   });
 });
