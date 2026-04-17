@@ -52,7 +52,10 @@ function App() {
           {/* Public routes — redirect to /dashboard if already logged in */}
           <Route path="/" element={<PublicRoute element={<Home />} />} />
           <Route path="/login" element={<PublicRoute element={<Login />} />} />
-          <Route path="/register" element={<PublicRoute element={<Register />} />} />
+          <Route
+            path="/register"
+            element={<PublicRoute element={<Register />} />}
+          />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Protected routes */}

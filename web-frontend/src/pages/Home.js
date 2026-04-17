@@ -866,7 +866,11 @@ const Home = () => {
                 {subscribed && (
                   <Typography
                     variant="body2"
-                    sx={{ mt: 2, color: "rgba(255,255,255,0.95)", fontWeight: 500 }}
+                    sx={{
+                      mt: 2,
+                      color: "rgba(255,255,255,0.95)",
+                      fontWeight: 500,
+                    }}
                   >
                     ✓ You're subscribed! Thanks for joining.
                   </Typography>
