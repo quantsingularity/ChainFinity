@@ -56,6 +56,7 @@ class Settings(BaseSettings):
 
     # Security Configuration
     SECRET_KEY: str = Field(default="dev-secret-key-change-in-production")
+    ALLOWED_HOSTS: List[str] = Field(default=["localhost", "127.0.0.1"])
     JWT_ALGORITHM: str = Field(default="HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7)
@@ -131,6 +132,35 @@ class Settings(BaseSettings):
             return v
         return ["*"]
 
+    @field_validator("SECRET_KEY", mode="after")
+    @classmethod
+    def validate_secret_key(cls, v: str, info: Any) -> str:
+        insecure_default = "dev-secret-key-change-in-production"
+        # We cannot access other fields via info.data reliably at this stage for
+        # all Pydantic versions, so we read ENVIRONMENT directly from the raw
+        # values that have already been validated (they are available in info.data
+        # once the field order in the class body is respected).
+        env = (info.data or {}).get("ENVIRONMENT", "development")
+        if env == "production" and v == insecure_default:
+            raise ValueError(
+                "SECRET_KEY must be changed from the default value in production. "
+                'Generate one with: python -c "import secrets; print(secrets.token_hex(64))"'
+            )
+        if len(v) < 32 and env == "production":
+            raise ValueError(
+                "SECRET_KEY must be at least 32 characters long in production."
+            )
+        return v
+
+    @field_validator("ALLOWED_HOSTS", mode="before")
+    @classmethod
+    def parse_allowed_hosts(cls, v: Any) -> List[str]:
+        if isinstance(v, str):
+            return [h.strip() for h in v.split(",")]
+        elif isinstance(v, list):
+            return v
+        return ["localhost", "127.0.0.1"]
+
     # Convenience property accessors for backward compatibility
     @property
     def app(self) -> Any:
@@ -193,7 +223,7 @@ class Settings(BaseSettings):
         """Security settings accessor"""
 
         class SecuritySettings:
-            def __init__(self, settings: Settings) -> None:
+            def __init__(self, settings: "Settings") -> None:
                 self.SECRET_KEY = settings.SECRET_KEY
                 self.JWT_ALGORITHM = settings.JWT_ALGORITHM
                 self.ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
@@ -202,6 +232,7 @@ class Settings(BaseSettings):
                 self.RATE_LIMIT_BURST = settings.RATE_LIMIT_BURST
                 self.CORS_ORIGINS = settings.CORS_ORIGINS
                 self.CORS_ALLOW_CREDENTIALS = settings.CORS_ALLOW_CREDENTIALS
+                self.ALLOWED_HOSTS = settings.ALLOWED_HOSTS
 
         return SecuritySettings(self)
 

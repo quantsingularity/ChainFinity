@@ -18,7 +18,6 @@
     "framer-motion": "^10.16.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-query": "^3.39.3",
     "react-router-dom": "^6.15.0",
     "react-scripts": "5.0.1",
     "recharts": "^2.8.0",
@@ -32,7 +31,9 @@
     "test:coverage": "react-scripts test --coverage --watchAll=false",
     "eject": "react-scripts eject",
     "lint": "eslint src --ext .js,.jsx",
-    "format": "prettier --write \"src/**/*.{js,jsx,json,css,md}\""
+    "format": "prettier --write \"src/**/*.{js,jsx,json,css,md}\"",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "browserslist": {
     "production": [
@@ -48,7 +49,8 @@
   },
   "devDependencies": {
     "@testing-library/react": "^14.0.0",
-    "@types/jest": "^29.5.0"
+    "@types/jest": "^29.5.0",
+    "@playwright/test": "^1.44.0"
   },
   "jest": {
     "transformIgnorePatterns": [

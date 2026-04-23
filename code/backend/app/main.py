@@ -88,7 +88,7 @@ app.add_middleware(
 if settings.app.ENVIRONMENT == "production":
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=["*"],  # Configure with actual allowed hosts
+        allowed_hosts=settings.security.ALLOWED_HOSTS,
     )
 
 # Add rate limiting middleware
