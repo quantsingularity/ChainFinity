@@ -1,400 +1,220 @@
-# ChainFinity
+# ChainFinity Code
 
-## Overview
+This directory contains the core application code for ChainFinity, a blockchain-based financial platform designed for institutional-grade portfolio management, risk assessment, market analytics, and DeFi protocol integration. The code is organized into three primary areas: the FastAPI backend, machine learning models for financial intelligence, and the blockchain smart contract layer.
 
-ChainFinity is a comprehensive blockchain-based financial platform designed for institutional-grade applications. This version provides advanced portfolio management, risk assessment, market analytics, and DeFi protocol integration with enterprise-level security and compliance features.
-
-## Table of Contents
-
-- [Architecture Overview](#architecture-overview)
-- [Key Features](#key-features)
-- [Technology Stack](#technology-stack)
-- [Getting Started](#getting-started)
-- [API Documentation](#api-documentation)
-- [Smart Contracts](#smart-contracts)
-- [Security Features](#security-features)
-- [Compliance & Regulatory](#compliance--regulatory)
-- [Testing](#testing)
-
-## Architecture Overview
-
-ChainFinity follows a microservices architecture with clear separation of concerns:
+## Directory Structure
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Backend API   │    │   Blockchain    │
-│   (React)       │◄──►│   (FastAPI)     │◄──►│   (Solidity)    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                              │
-                              ▼
-                    ┌─────────────────┐
-                    │   Database      │
-                    │   (PostgreSQL)  │
-                    └─────────────────┘
-                              │
-                              ▼
-                    ┌─────────────────┐
-                    │   Cache/Queue   │
-                    │   (Redis)       │
-                    └─────────────────┘
+code/
+├── backend/           # FastAPI backend services and API layer
+├── ai_models/         # Machine learning models for crypto financial intelligence
+└── blockchain/        # Solidity smart contracts and blockchain tooling
 ```
 
-### Core Components
+## Backend
 
-1. **Backend Services**
-   - Portfolio Management Service
-   - Risk Assessment Service
-   - Market Data Service
-   - Analytics Service
-   - Authentication & Authorization
-   - Compliance Service
+The `backend/` directory houses the main application server built with Python and FastAPI. It is a production-ready, enterprise-grade backend emphasizing financial industry standards, comprehensive security, regulatory compliance, and multi-chain blockchain integration.
 
-2. **Smart Contracts**
-   - Advanced Asset Vault
-   - Institutional Governance
-   - DeFi Protocol Integration
-   - Multi-signature Wallets
+### Key Components
 
-3. **AI/ML Models**
-   - Risk Prediction Models
-   - Market Analysis
-   - Portfolio Optimization
-   - Fraud Detection
+| Directory     | Purpose                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------ |
+| `app/`        | FastAPI application factory, route registration, and core app setup                              |
+| `config/`     | Environment-specific configuration, security policies, and feature flags                         |
+| `services/`   | Core business logic for portfolios, transactions, risk assessment, and blockchain interactions   |
+| `models/`     | SQLAlchemy ORM models for users, portfolios, transactions, compliance records, and risk metrics  |
+| `schemas/`    | Pydantic request/response validation schemas                                                     |
+| `routes/`     | API endpoint definitions organized by domain (auth, users, portfolios, transactions, compliance) |
+| `middleware/` | Custom middleware for authentication, rate limiting, logging, and CORS                           |
+| `exceptions/` | Custom exception classes and global error handlers                                               |
+| `monitoring/` | Prometheus metrics, structured logging, and health check endpoints                               |
+| `migrations/` | Alembic database migration scripts                                                               |
+| `nginx/`      | Nginx reverse proxy and load balancer configuration                                              |
+| `scripts/`    | Operational and utility scripts                                                                  |
+| `tests/`      | Comprehensive test suite including unit, integration, and functional tests                       |
 
-## Key Features
+### Notable Features
 
-The ChainFinity platform offers a robust set of features categorized for institutional use:
+- **Enterprise Security**: JWT authentication with refresh tokens, TOTP multi-factor authentication, role-based access control, sliding window rate limiting, field-level PII encryption, bcrypt password hashing, and account lockout protection
+- **Financial Compliance**: KYC/AML integration with identity and document verification, sanctions screening, PEP checks, real-time transaction monitoring, suspicious activity detection, and regulatory reporting
+- **Risk Management**: Portfolio risk metrics, real-time risk scoring, position limits and controls, stress testing capabilities, and risk-based alerting
+- **Blockchain Integration**: Multi-chain support via Web3.py for Ethereum, Polygon, and BSC networks; smart contract interaction and transaction management
+- **Scalable Infrastructure**: Async database operations with SQLAlchemy, Redis caching and session management, connection pooling, Docker support, and horizontal scaling via Docker Compose
 
-| Category                                        | Feature Description                                                                                                                                                                                               |
-| :---------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **🏦 Institutional-Grade Portfolio Management** | Multi-asset portfolio tracking and management, real-time valuation, advanced rebalancing algorithms, risk-adjusted return calculations, and benchmark comparison/attribution analysis.                            |
-| **📊 Advanced Risk Management**                 | Value at Risk (VaR) calculations (multiple methodologies), stress testing and scenario analysis, real-time risk monitoring and alerts, compliance limit checking, and liquidity risk assessment.                  |
-| **📈 Market Data & Analytics**                  | Real-time and historical market data aggregation, technical indicator calculations, market sentiment analysis, price feed redundancy and validation, and custom analytics dashboards.                             |
-| **🔐 Enterprise Security**                      | Multi-factor authentication, Role-based Access Control (RBAC), comprehensive audit logging, encrypted data storage and transmission, and external smart contract security audits.                                 |
-| **🏛️ Regulatory Compliance**                    | Integrated KYC/AML workflows, automated regulatory reporting, compliance monitoring and alerts, robust audit trail maintenance, and GDPR compliance features.                                                     |
-| **🌐 DeFi Integration**                         | Yield farming and liquidity mining capabilities, Automated Market Making (AMM) support, secure cross-chain asset management, integration with institutional-grade DeFi protocols, and risk-managed DeFi exposure. |
+### Running the Backend
 
-## Technology Stack
-
-ChainFinity is built on a modern, high-performance, and scalable technology stack:
-
-| Component          | Stack          | Key Technologies                                                                                      |
-| :----------------- | :------------- | :---------------------------------------------------------------------------------------------------- |
-| **Backend**        | Python/FastAPI | FastAPI (Python 3.11+), PostgreSQL 14+, Redis 7+, Celery, JWT, OpenAPI/Swagger                        |
-| **Blockchain**     | EVM/Solidity   | Solidity 0.8.19+, Hardhat/Foundry, Ethereum/Polygon/BSC Networks, OpenZeppelin Contracts, Waffle/Chai |
-| **AI/ML**          | Data Science   | TensorFlow/PyTorch, Pandas, NumPy, Plotly, Matplotlib, MLflow                                         |
-| **Infrastructure** | DevOps/Cloud   | Docker, Kubernetes, GitHub Actions (CI/CD), Prometheus + Grafana (Monitoring), ELK Stack (Logging)    |
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL 14+
-- Redis 7+
-- Docker & Docker Compose
-
-### Installation
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/abrar2030/chainfinity.git
-   cd chainfinity
-   ```
-
-2. **Set up the backend**
-
-   ```bash
-   cd code/backend
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-3. **Configure environment variables**
-
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-4. **Set up the database**
-
-   ```bash
-   alembic upgrade head
-   ```
-
-5. **Start the services**
-
-   ```bash
-   docker-compose up -d
-   python -m uvicorn main:app --reload
-   ```
-
-6. **Set up smart contracts**
-   ```bash
-   cd ../blockchain
-   npm install
-   npx hardhat compile
-   npx hardhat test
-   ```
-
-### Quick Start with Docker
+Local development:
 
 ```bash
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+alembic upgrade head
+python -m uvicorn main:app --reload
+```
+
+With Docker:
+
+```bash
+cd backend
 docker-compose up -d
 ```
 
-This will start all services including:
+Services included in Docker Compose:
 
-- Backend API (http://localhost:8000)
-- PostgreSQL database
-- Redis cache
-- Monitoring services
+| Service    | Purpose                         |
+| ---------- | ------------------------------- |
+| API        | ChainFinity backend application |
+| PostgreSQL | Primary transactional database  |
+| Redis      | Cache and session store         |
+| Nginx      | Reverse proxy and load balancer |
+| Prometheus | Metrics collection              |
+| Grafana    | Monitoring dashboards           |
 
-## API Documentation
+For full backend documentation, see [backend/README.md](backend/README.md).
 
-### Authentication
+## AI Models
 
-All API endpoints require authentication using JWT tokens:
+The `ai_models/` directory contains the machine learning stack that powers ChainFinity's predictive analytics and intelligent risk detection for cryptocurrency markets. Models are built with Python data science libraries and trained on historical on-chain and market data.
 
-```bash
-# Login to get access token
-curl -X POST "http://localhost:8000/api/v1/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com", "password": "password"}'
+### Key Components
 
-# Use token in subsequent requests
-curl -X GET "http://localhost:8000/api/v1/portfolios" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
+| Module                       | Purpose                                                                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `exploit_detection_model.py` | Detects smart contract exploits and anomalous transaction patterns that may indicate security vulnerabilities or attacks |
+| `liquidity_crisis_model.py`  | Predicts liquidity crises in pools and protocols by analyzing depth, volume, and withdrawal patterns                     |
+| `smart_money_tracker.py`     | Identifies and tracks "smart money" wallet movements to surface institutional-level trading signals                      |
+| `volatility_forecaster.py`   | Forecasts price volatility across assets using historical price data and on-chain metrics                                |
+| `train_correlation_model.py` | Trains correlation models that capture relationships between assets, protocols, and market events                        |
+| `data_preprocessing.py`      | Shared data cleaning, feature engineering, and normalization pipeline for all models                                     |
 
-### Core Endpoints
+### Technology Stack
 
-#### Portfolio Management
+| Component           | Technology          |
+| ------------------- | ------------------- |
+| Languages           | Python 3.11+        |
+| ML Frameworks       | TensorFlow, PyTorch |
+| Data Processing     | Pandas, NumPy       |
+| Visualization       | Plotly, Matplotlib  |
+| Experiment Tracking | MLflow              |
 
-- `GET /api/v1/portfolios` - List user portfolios
-- `POST /api/v1/portfolios` - Create new portfolio
-- `GET /api/v1/portfolios/{id}` - Get portfolio details
-- `PUT /api/v1/portfolios/{id}` - Update portfolio
-- `DELETE /api/v1/portfolios/{id}` - Delete portfolio
+### Running the Models
 
-#### Asset Management
-
-- `POST /api/v1/portfolios/{id}/assets` - Add asset to portfolio
-- `PUT /api/v1/portfolios/{id}/assets/{asset_id}` - Update asset
-- `DELETE /api/v1/portfolios/{id}/assets/{asset_id}` - Remove asset
-
-#### Risk Management
-
-- `GET /api/v1/portfolios/{id}/risk` - Get risk metrics
-- `POST /api/v1/portfolios/{id}/risk/assessment` - Perform risk assessment
-- `GET /api/v1/portfolios/{id}/risk/stress-test` - Run stress tests
-
-#### Market Data
-
-- `GET /api/v1/market/prices/{symbol}` - Get current price
-- `GET /api/v1/market/historical/{symbol}` - Get historical data
-- `GET /api/v1/market/indicators/{symbol}` - Get technical indicators
-
-### API Response Format
-
-All API responses follow a consistent format:
-
-```json
-{
-  "success": true,
-  "data": {
-    // Response data
-  },
-  "message": "Operation completed successfully",
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
-
-Error responses:
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "PORTFOLIO_NOT_FOUND",
-    "message": "Portfolio with ID 123 not found",
-    "details": {}
-  },
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
-
-## Smart Contracts
-
-### Advanced Asset Vault
-
-The `AdvancedAssetVault` contract provides institutional-grade asset management:
-
-```solidity
-// Deploy the vault
-const vault = await AdvancedAssetVault.deploy(
-  adminAddress,
-  treasuryAddress,
-  complianceOracleAddress
-);
-
-// Add supported asset
-await vault.addSupportedAsset(
-  tokenAddress,
-  maxAllocation,
-  riskRating,
-  requiresKYC
-);
-
-// Deposit assets
-await vault.deposit(tokenAddress, amount, metadata);
-```
-
-### Institutional Governance
-
-The governance contract supports multiple voting mechanisms:
-
-```solidity
-// Create a proposal
-await governance.propose(
-  ProposalType.Parameter,
-  VotingMechanism.QuadraticVoting,
-  "Proposal Title",
-  "Detailed description",
-  targets,
-  values,
-  calldatas,
-  requiresCompliance
-);
-
-// Cast vote
-await governance.castVote(proposalId, VoteChoice.For, "Reason");
-```
-
-### DeFi Protocol Integration
-
-The DeFi protocol contract provides yield farming and liquidity mining:
-
-```solidity
-// Create staking pool
-await defiProtocol.createPool(
-  stakingToken,
-  rewardToken,
-  PoolType.YieldFarming,
-  RiskLevel.Medium,
-  rewardRate,
-  duration,
-  minStake,
-  maxStake,
-  lockupPeriod,
-  requiresKYC
-);
-
-// Stake tokens
-await defiProtocol.stake(poolId, amount);
-```
-
-## Security Features
-
-The platform's security is structured around multiple layers of protection:
-
-| Security Domain                    | Key Features                                                                                                                                                      |
-| :--------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Authentication & Authorization** | JWT-based authentication with refresh tokens, Role-based Access Control (RBAC), Multi-factor Authentication (MFA) support, and robust session management.         |
-| **Data Protection**                | AES-256 encryption for sensitive data, TLS 1.3 for data in transit, database encryption at rest, and PII data anonymization.                                      |
-| **Smart Contract Security**        | Utilization of OpenZeppelin security patterns, reentrancy protection, access control mechanisms, emergency pause functionality, and multi-signature requirements. |
-| **Audit & Compliance**             | Comprehensive audit logging, real-time security monitoring, automated compliance checks, and regular security assessments.                                        |
-
-## Compliance & Regulatory
-
-ChainFinity is designed to meet stringent financial regulatory requirements:
-
-| Compliance Area          | Key Features                                                                                                                               |
-| :----------------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
-| **KYC/AML Integration**  | Integrated identity verification workflows, document upload and verification, risk scoring and monitoring, and sanctions list screening.   |
-| **Regulatory Reporting** | Automated report generation, customizable reporting templates, regulatory submission workflows, and comprehensive audit trail maintenance. |
-| **Data Privacy**         | Full GDPR compliance features, clear data retention policies, support for the Right to be Forgotten, and consent management.               |
-
-### Environment Configuration
-
-#### Development
+Individual models can be executed directly for training or inference:
 
 ```bash
-export ENVIRONMENT=development
-export DATABASE_URL=postgresql://user:pass@localhost/chainfinity_dev
-export REDIS_URL=redis://localhost:6379
-export SECRET_KEY=your-secret-key
+cd ai_models
+pip install -r requirements.txt
+python volatility_forecaster.py
+python exploit_detection_model.py
 ```
 
-#### Production
+The preprocessing pipeline in `data_preprocessing.py` is imported by all model scripts to ensure consistent feature engineering across the platform.
+
+## Blockchain
+
+The `blockchain/` directory contains the Solidity smart contract layer and blockchain tooling for ChainFinity's on-chain operations. It supports the Ethereum ecosystem using Hardhat as the development framework.
+
+### Key Components
+
+| Directory/File      | Purpose                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------ |
+| `contracts/`        | Solidity smart contracts for portfolio management, asset custody, and DeFi integrations          |
+| `subgraph/`         | The Graph protocol subgraph configuration for indexing on-chain events and making them queryable |
+| `test/`             | Hardhat test suite using Waffle/Chai for contract validation                                     |
+| `hardhat.config.js` | Hardhat network configuration for Ethereum, Polygon, and BSC deployments                         |
+| `package.json`      | Node.js dependencies including Hardhat, OpenZeppelin contracts, Waffle, and Chai                 |
+
+### Technology Stack
+
+| Component        | Technology             |
+| ---------------- | ---------------------- |
+| Language         | Solidity 0.8.19+       |
+| Framework        | Hardhat / Foundry      |
+| Networks         | Ethereum, Polygon, BSC |
+| Contract Library | OpenZeppelin Contracts |
+| Testing          | Waffle + Chai          |
+| Indexing         | The Graph (subgraph)   |
+
+### Working with Smart Contracts
+
+Compile contracts:
 
 ```bash
-export ENVIRONMENT=production
-export DATABASE_URL=postgresql://user:pass@prod-db/chainfinity
-export REDIS_URL=redis://prod-redis:6379
-export SECRET_KEY=your-production-secret-key
+cd blockchain
+npm install
+npx hardhat compile
 ```
 
-### Monitoring & Observability
+Run tests:
 
-| Component    | Tool/Stack                                  |
-| :----------- | :------------------------------------------ |
-| **Metrics**  | Prometheus + Grafana                        |
-| **Logging**  | ELK Stack (Elasticsearch, Logstash, Kibana) |
-| **Tracing**  | Jaeger                                      |
-| **Alerting** | AlertManager + PagerDuty                    |
+```bash
+npx hardhat test
+```
+
+Deploy to a network:
+
+```bash
+npx hardhat run scripts/deploy.js --network <network-name>
+```
+
+## Technology Stack Summary
+
+| Layer          | Technology                                |
+| -------------- | ----------------------------------------- |
+| Backend        | Python 3.11+, FastAPI 0.104.1             |
+| Database       | PostgreSQL 15+ with async SQLAlchemy      |
+| Cache          | Redis 7+                                  |
+| Authentication | JWT with refresh tokens, TOTP MFA         |
+| Blockchain     | Solidity 0.8.19+, Hardhat, Web3.py        |
+| Networks       | Ethereum, Polygon, BSC                    |
+| ML/AI          | TensorFlow, PyTorch, Pandas, NumPy        |
+| Monitoring     | Prometheus, Grafana, structured logging   |
+| Deployment     | Docker, Docker Compose, Nginx             |
+| Testing        | pytest (backend), Waffle/Chai (contracts) |
+
+## Integration Between Components
+
+The three code areas work together as an integrated platform:
+
+1. The **backend** serves as the central API layer, handling user authentication, portfolio management, compliance workflows, and risk assessments. It communicates with the blockchain layer via Web3.py to read on-chain data and submit transactions.
+
+2. The **AI models** are called by backend services during portfolio analysis, risk evaluation, and market monitoring operations. Predictions from the exploit detection, volatility forecasting, and liquidity crisis models feed directly into the risk scoring engine and alerting system.
+
+3. The **blockchain** layer provides the trustless, on-chain settlement and custody layer. Smart contracts manage asset allocations and DeFi interactions, while the subgraph indexes events for efficient querying by the backend.
 
 ## Testing
 
-### Backend Testing
+Each subdirectory maintains its own test suite:
+
+| Component       | Test Location      | Framework               |
+| --------------- | ------------------ | ----------------------- |
+| Backend         | `backend/tests/`   | pytest                  |
+| Smart Contracts | `blockchain/test/` | Hardhat + Waffle + Chai |
+
+Run all backend tests:
 
 ```bash
-# Run all tests
+cd backend
 pytest
-
-# Run with coverage
-pytest --cov=app --cov-report=html
-
-# Run specific test categories
-pytest -m unit
-pytest -m integration
-pytest -m e2e
 ```
 
-### Smart Contract Testing
+Run contract tests:
 
 ```bash
-# Run contract tests
+cd blockchain
 npx hardhat test
-
-# Run with gas reporting
-npx hardhat test --gas-reporter
-
-# Run coverage
-npx hardhat coverage
 ```
 
-### Load Testing
+## Environment Setup
+
+Before running any component, copy and configure the environment files:
 
 ```bash
-# API load testing
-locust -f tests/load/api_load_test.py
-
-# Smart contract stress testing
-npx hardhat run scripts/stress-test.js
+cd backend && cp .env.example .env
+cd ../blockchain && cp .env.example .env  # if available
 ```
 
-## Performance Benchmarks
-
-| Metric                     | Target                     | Notes                                 |
-| :------------------------- | :------------------------- | :------------------------------------ |
-| **API Response Time**      | < 100ms (95th percentile)  | High-speed data delivery              |
-| **API Throughput**         | > 1000 requests/second     | Scalability under load                |
-| **API Availability**       | 99.9% uptime               | Enterprise-grade reliability          |
-| **Gas Optimization**       | < 100k gas per transaction | Cost-efficient contract execution     |
-| **Transaction Throughput** | Network dependent          | Optimized for selected L1/L2 networks |
-| **Contract Size**          | < 24KB per contract        | Adherence to contract size limits     |
+Required environment variables include database URIs, Redis connection strings, JWT secrets, blockchain RPC endpoints, and API keys for external market data providers.
