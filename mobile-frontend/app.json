@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "ChainFinity",
+    "slug": "chainfinity-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "chainfinity",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "io.chainfinity.mobile"
+    },
+    "android": {
+      "package": "io.chainfinity.mobile"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

@@ -1,117 +1,100 @@
-import axios, { type AxiosError } from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios, { AxiosError } from "axios";
 
-// API Error type
-export interface ApiError {
-  status: number;
-  message: string;
-}
+// Base URL of the backend. Expo exposes EXPO_PUBLIC_* variables to the app.
+// All endpoint paths include the backend's versioned prefix (/api/v1/...),
+// matching the FastAPI routes (auth/login, auth/me, blockchain/...).
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
 
-// Create an axios instance with default config
+export const TOKEN_KEY = "chainfinity.token";
+export const USER_KEY = "chainfinity.user";
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 15000,
 });
 
-// Add a request interceptor to include auth token in requests
-api.interceptors.request.use(
-  (config) => {
-    // Only access localStorage on client side
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("token");
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
+// Attach the bearer token from AsyncStorage to every request.
+api.interceptors.request.use(async (config) => {
+  const token = await AsyncStorage.getItem(TOKEN_KEY);
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-// Add a response interceptor to handle common errors
+// On 401, clear stored credentials. Navigation back to the login screen is
+// handled by the auth context observing the cleared state (a mobile app has
+// no window.location to redirect).
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
-    // Handle 401 Unauthorized errors (token expired or invalid)
+  async (error: AxiosError) => {
     if (error.response && error.response.status === 401) {
-      // Clear local storage and redirect to login (only on client side)
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        window.location.href = "/login";
-      }
+      await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
     }
     return Promise.reject(error);
   },
 );
 
-// Auth API endpoints
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+// Auth API endpoints (backend: /api/v1/auth/*)
 export const authAPI = {
-  register: (userData: any) => api.post("/api/v1/auth/register", userData),
-  login: (credentials: any) => api.post("/api/v1/auth/token", credentials),
+  register: (userData: RegisterData) =>
+    api.post("/api/v1/auth/register", userData),
+  login: (credentials: LoginCredentials) =>
+    api.post("/api/v1/auth/login", credentials),
   getCurrentUser: () => api.get("/api/v1/auth/me"),
-  updatePassword: (data: { currentPassword: string; newPassword: string }) =>
-    api.put("/api/v1/auth/password", data),
-  updateProfile: (data: any) => api.put("/api/v1/auth/me", data),
 };
 
-// Blockchain API endpoints
+// Blockchain API endpoints (backend: /api/v1/blockchain/*)
 export const blockchainAPI = {
   getPortfolio: (walletAddress: string) =>
     api.get(`/api/v1/blockchain/portfolio/${walletAddress}`),
   getTransactions: (walletAddress: string) =>
     api.get(`/api/v1/blockchain/transactions/${walletAddress}`),
-  getTokenBalance: (tokenAddress: string, network: string = "ethereum") =>
+  getTokenBalance: (tokenAddress: string, network = "ethereum") =>
     api.get(`/api/v1/blockchain/balance/${tokenAddress}?network=${network}`),
   getEthBalance: () => api.get("/api/v1/blockchain/eth-balance"),
 };
 
-// Portfolios API endpoints
-export const portfoliosAPI = {
-  list: () => api.get("/api/v1/portfolios"),
-  get: (id: string) => api.get(`/api/v1/portfolios/${id}`),
-  create: (data: any) => api.post("/api/v1/portfolios", data),
-  update: (id: string, data: any) => api.put(`/api/v1/portfolios/${id}`, data),
-  delete: (id: string) => api.delete(`/api/v1/portfolios/${id}`),
-};
+export interface ApiErrorInfo {
+  status: number;
+  message: string;
+}
 
-// Transactions API endpoints
-export const transactionsAPI = {
-  list: (params?: any) => api.get("/api/v1/transactions", { params }),
-  get: (id: string) => api.get(`/api/v1/transactions/${id}`),
-};
-
-// Risk API endpoints
-export const riskAPI = {
-  assess: (data: any) => api.post("/api/v1/risk/assess", data),
-  getRiskMetrics: (portfolioId: string) =>
-    api.get(`/api/v1/risk/metrics/${portfolioId}`),
-};
-
-// Helper function to handle API errors
-export const handleApiError = (error: any): ApiError => {
-  if (error.response) {
-    // The request was made and the server responded with a status code
-    // that falls out of the range of 2xx
-    const { status, data } = error.response;
+// Normalise axios errors into a UI-friendly shape.
+export const handleApiError = (error: unknown): ApiErrorInfo => {
+  const err = error as AxiosError<{ detail?: string }>;
+  if (err?.response) {
     return {
-      status,
-      message: data.detail || data.message || "An error occurred",
+      status: err.response.status,
+      message: err.response.data?.detail || "An error occurred",
     };
-  } else if (error.request) {
-    // The request was made but no response was received
+  }
+  if (err?.request) {
     return {
       status: 0,
       message: "No response from server. Please check your connection.",
     };
-  } else {
-    // Something happened in setting up the request that triggered an Error
-    return {
-      status: 0,
-      message: error.message || "An unknown error occurred",
-    };
   }
+  return {
+    status: 0,
+    message: (err as Error)?.message || "An unknown error occurred",
+  };
 };
 
 export default api;

@@ -1,277 +1,168 @@
-"use client";
-
-import { ethers } from "ethers";
-import type React from "react";
-import {
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, {
   createContext,
-  type ReactNode,
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from "react";
-import { type ApiError, authAPI, handleApiError } from "../services/api";
+import {
+  ApiErrorInfo,
+  authAPI,
+  handleApiError,
+  LoginCredentials,
+  RegisterData,
+  TOKEN_KEY,
+  USER_KEY,
+} from "../services/api";
 
-interface User {
+export interface User {
   id: string;
-  username: string;
+  name?: string;
   email: string;
+  wallet_address?: string;
 }
 
-interface WalletState {
-  isConnected: boolean;
-  address: string | null;
-  balance: string | null;
-  network: string | null;
-}
-
-interface AppState {
+interface AppContextValue {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
-  error: ApiError | null;
-  darkMode: boolean;
-  wallet: WalletState;
-}
-
-interface AppActions {
-  login: (credentials: any) => Promise<boolean>;
+  error: ApiErrorInfo | null;
+  login: (credentials: LoginCredentials) => Promise<boolean>;
   register: (
-    userData: any,
-  ) => Promise<{ success: boolean; data?: any; error?: ApiError }>;
-  logout: () => void;
+    data: RegisterData,
+  ) => Promise<{ success: boolean; error?: ApiErrorInfo }>;
+  logout: () => Promise<void>;
   clearError: () => void;
-  toggleTheme: () => void;
-  connectWallet: () => Promise<void>;
-  disconnectWallet: () => void;
 }
 
-const AppContext = createContext<
-  (AppState & { actions: AppActions }) | undefined
->(undefined);
+const AppContext = createContext<AppContextValue | undefined>(undefined);
 
-const initialWalletState: WalletState = {
-  isConnected: false,
-  address: null,
-  balance: null,
-  network: null,
-};
+export const AppProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<ApiErrorInfo | null>(null);
 
-const initialState: AppState = {
-  user: null,
-  isAuthenticated: false,
-  loading: true,
-  error: null,
-  darkMode: false,
-  wallet: initialWalletState,
-};
+  const logout = useCallback(async () => {
+    await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+    setUser(null);
+    setIsAuthenticated(false);
+  }, []);
 
-interface AppProviderProps {
-  children: ReactNode;
-}
-
-export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
-  const [state, setState] = useState<AppState>(initialState);
-  // Use a ref so connectWallet can call disconnectWallet without circular deps
-  const disconnectWalletRef = useRef<() => void>(() => {});
-
+  // Restore the session from AsyncStorage on app start, then verify the
+  // token with the backend. Verification failures other than an explicit
+  // 401 keep the cached session (offline tolerance).
   useEffect(() => {
-    const initApp = async () => {
-      let initialDarkMode = false;
-      let initialUser: User | null = null;
-      let initialIsAuthenticated = false;
-
-      if (typeof window !== "undefined") {
-        initialDarkMode = localStorage.getItem("darkMode") === "true";
-        const token = localStorage.getItem("token");
-        const storedUser = localStorage.getItem("user");
-
+    const initAuth = async () => {
+      try {
+        const [token, storedUser] = await Promise.all([
+          AsyncStorage.getItem(TOKEN_KEY),
+          AsyncStorage.getItem(USER_KEY),
+        ]);
         if (token && storedUser) {
+          setUser(JSON.parse(storedUser));
+          setIsAuthenticated(true);
           try {
-            initialUser = JSON.parse(storedUser);
-            initialIsAuthenticated = true;
-          } catch (_err) {
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            initialUser = null;
-            initialIsAuthenticated = false;
+            const response = await authAPI.getCurrentUser();
+            setUser(response.data);
+            await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.data));
+          } catch (verifyErr) {
+            const info = handleApiError(verifyErr);
+            if (info.status === 401) {
+              await logout();
+            }
           }
         }
+      } catch {
+        await logout();
+      } finally {
+        setLoading(false);
       }
-
-      setState((prev) => ({
-        ...prev,
-        darkMode: initialDarkMode,
-        user: initialUser,
-        isAuthenticated: initialIsAuthenticated,
-        loading: false,
-      }));
     };
-    initApp();
-  }, []);
+    initAuth();
+  }, [logout]);
 
-  const toggleTheme = useCallback(() => {
-    setState((prev) => {
-      const newMode = !prev.darkMode;
-      if (typeof window !== "undefined") {
-        localStorage.setItem("darkMode", String(newMode));
-        document.documentElement.classList.toggle("dark", newMode);
-      }
-      return { ...prev, darkMode: newMode };
-    });
-  }, []);
+  const login = async (credentials: LoginCredentials): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
 
-  const login = useCallback(async (credentials: any): Promise<boolean> => {
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    // Demo mode: allow exploring the app without a backend.
+    const isDemo =
+      credentials.email === "guest@chainfinity.io" ||
+      credentials.email === "demo@chainfinity.io";
+    if (isDemo) {
+      const demoUser: User = {
+        id: "demo-user",
+        name: "Demo User",
+        email: credentials.email,
+        wallet_address: "0xDEMO1234567890abcdef1234567890abcdef1234",
+      };
+      await AsyncStorage.setItem(TOKEN_KEY, "demo-token");
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(demoUser));
+      setUser(demoUser);
+      setIsAuthenticated(true);
+      setLoading(false);
+      return true;
+    }
+
     try {
       const response = await authAPI.login(credentials);
-      const { access_token } = response.data;
-      localStorage.setItem("token", access_token);
+      const { access_token: accessToken } = response.data;
+      await AsyncStorage.setItem(TOKEN_KEY, accessToken);
 
       const userResponse = await authAPI.getCurrentUser();
-      const loggedInUser = userResponse.data;
-      localStorage.setItem("user", JSON.stringify(loggedInUser));
+      setUser(userResponse.data);
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(userResponse.data));
 
-      setState((prev) => ({
-        ...prev,
-        user: loggedInUser,
-        isAuthenticated: true,
-        loading: false,
-      }));
+      setIsAuthenticated(true);
+      setLoading(false);
       return true;
     } catch (err) {
-      const apiError = handleApiError(err);
-      setState((prev) => ({ ...prev, error: apiError, loading: false }));
+      setError(handleApiError(err));
+      setLoading(false);
       return false;
     }
-  }, []);
-
-  const register = useCallback(
-    async (
-      userData: any,
-    ): Promise<{ success: boolean; data?: any; error?: ApiError }> => {
-      setState((prev) => ({ ...prev, loading: true, error: null }));
-      try {
-        const response = await authAPI.register(userData);
-        setState((prev) => ({ ...prev, loading: false }));
-        return { success: true, data: response.data };
-      } catch (err) {
-        const apiError = handleApiError(err);
-        setState((prev) => ({ ...prev, error: apiError, loading: false }));
-        return { success: false, error: apiError };
-      }
-    },
-    [],
-  );
-
-  const logout = useCallback(() => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setState((prev) => ({ ...prev, user: null, isAuthenticated: false }));
-  }, []);
-
-  const clearError = useCallback(() => {
-    setState((prev) => ({ ...prev, error: null }));
-  }, []);
-
-  const disconnectWallet = useCallback(() => {
-    if (
-      typeof window !== "undefined" &&
-      typeof window.ethereum?.removeListener === "function"
-    ) {
-      window.ethereum.removeListener("accountsChanged", () => {});
-      window.ethereum.removeListener("chainChanged", () => {});
-    }
-    setState((prev) => ({ ...prev, wallet: initialWalletState }));
-  }, []);
-
-  // Keep ref in sync so connectWallet can call it without stale closure
-  disconnectWalletRef.current = disconnectWallet;
-
-  const connectWallet = useCallback(async () => {
-    if (
-      typeof window === "undefined" ||
-      typeof window.ethereum === "undefined"
-    ) {
-      setState((prev) => ({
-        ...prev,
-        error: {
-          message: "Wallet not detected. Please install MetaMask.",
-          status: 404,
-        },
-      }));
-      return;
-    }
-    try {
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      });
-      const address = accounts[0];
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const balanceWei = await provider.getBalance(address);
-      const balanceEth = ethers.formatEther(balanceWei);
-      const network = await provider.getNetwork();
-      const networkName =
-        network.name === "homestead" ? "Ethereum Mainnet" : network.name;
-
-      setState((prev) => ({
-        ...prev,
-        wallet: {
-          isConnected: true,
-          address,
-          balance: `${parseFloat(balanceEth).toFixed(4)} ETH`,
-          network: networkName,
-        },
-      }));
-
-      const handleAccountsChanged = (newAccounts: string[]) => {
-        if (newAccounts.length === 0) {
-          disconnectWalletRef.current();
-        } else {
-          connectWallet();
-        }
-      };
-
-      const handleChainChanged = () => {
-        window.location.reload();
-      };
-
-      window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
-      window.ethereum.removeListener("chainChanged", handleChainChanged);
-      window.ethereum.on("accountsChanged", handleAccountsChanged);
-      window.ethereum.on("chainChanged", handleChainChanged);
-    } catch (error) {
-      console.error("Failed to connect wallet:", error);
-      setState((prev) => ({
-        ...prev,
-        error: {
-          message: "Failed to connect wallet. Please try again.",
-          status: 500,
-        },
-      }));
-    }
-  }, []);
-
-  const value = {
-    ...state,
-    actions: {
-      login,
-      register,
-      logout,
-      clearError,
-      toggleTheme,
-      connectWallet,
-      disconnectWallet,
-    },
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  const register = async (data: RegisterData) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await authAPI.register(data);
+      setLoading(false);
+      return { success: true };
+    } catch (err) {
+      const apiError = handleApiError(err);
+      setError(apiError);
+      setLoading(false);
+      return { success: false, error: apiError };
+    }
+  };
+
+  const clearError = () => setError(null);
+
+  return (
+    <AppContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        loading,
+        error,
+        login,
+        register,
+        logout,
+        clearError,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
 };
 
-export const useApp = () => {
+export const useApp = (): AppContextValue => {
   const context = useContext(AppContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useApp must be used within an AppProvider");
   }
   return context;
