@@ -93,9 +93,11 @@ PYTHON_DIRECTORIES=(
 )
 
 JS_DIRECTORIES=(
-  "code/frontend/src"
-  "code/frontend/src/components"
-  "code/frontend/src/pages"
+  "web-frontend/src"
+  "web-frontend/src/components"
+  "web-frontend/src/pages"
+  "mobile-frontend/src"
+  "mobile-frontend/app"
   "code/blockchain/test"
 )
 
@@ -106,7 +108,6 @@ SOLIDITY_DIRECTORIES=(
 YAML_DIRECTORIES=(
   "infrastructure/kubernetes"
   "infrastructure/ansible"
-  "infrastructure/k8s"
   ".github/workflows"
 )
 

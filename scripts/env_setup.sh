@@ -234,7 +234,7 @@ setup_databases() {
     fi
 
     # Create docker-compose file for databases if it doesn't exist
-    local dev_compose_file="$PROJECT_DIR/infrastructure/docker-compose.dev.yml"
+    local dev_compose_file="$PROJECT_DIR/infrastructure/docker-compose.yml"
     if [ ! -f "$dev_compose_file" ]; then
       mkdir -p "$PROJECT_DIR/infrastructure"
       cat > "$dev_compose_file" << EOF
@@ -265,7 +265,7 @@ volumes:
   postgres_data:
   redis_data:
 EOF
-      log "$INFO" "Created docker-compose.dev.yml for databases"
+      log "$INFO" "Created docker-compose.yml for databases"
     fi
 
     # Start database containers
@@ -290,17 +290,17 @@ setup_project_dependencies() {
   fi
 
   # Install frontend dependencies
-  if [ -f "$PROJECT_DIR/code/frontend/package.json" ]; then
+  if [ -f "$PROJECT_DIR/web-frontend/package.json" ]; then
     log "$INFO" "Installing frontend dependencies..."
-    (cd "$PROJECT_DIR/code/frontend" && npm install --silent)
+    (cd "$PROJECT_DIR/web-frontend" && npm install --silent)
     handle_error $? "Failed to install frontend dependencies"
     log "$SUCCESS" "Installed frontend dependencies"
   fi
 
   # Install mobile-frontend dependencies
-  if [ -f "$PROJECT_DIR/code/mobile-frontend/package.json" ]; then
+  if [ -f "$PROJECT_DIR/mobile-frontend/package.json" ]; then
     log "$INFO" "Installing mobile-frontend dependencies..."
-    (cd "$PROJECT_DIR/code/mobile-frontend" && npm install --silent)
+    (cd "$PROJECT_DIR/mobile-frontend" && npm install --silent)
     handle_error $? "Failed to install mobile-frontend dependencies"
     log "$SUCCESS" "Installed mobile-frontend dependencies"
   fi
@@ -429,8 +429,8 @@ main() {
   directories=(
     "code/blockchain"
     "code/backend"
-    "code/frontend"
-    "code/mobile-frontend"
+    "web-frontend"
+    "mobile-frontend"
     "docs"
     "infrastructure"
     "data"
@@ -458,13 +458,16 @@ main() {
 # Environment: $ENVIRONMENT
 
 # General
-NODE_ENV=$ENVIRONMENT
+ENVIRONMENT=$ENVIRONMENT
 LOG_LEVEL=info
 
-# Backend
-BACKEND_PORT=8000
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/chainfinity
-REDIS_URL=redis://localhost:6379
+# Backend (FastAPI). DATABASE_URL must use the +asyncpg driver the async
+# engine requires. SECRET_KEY and ENCRYPTION_KEY are required by the app.
+BACKEND_PORT=8080
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/chainfinity
+REDIS_URL=redis://localhost:6379/0
+SECRET_KEY=change-me-to-a-32-char-minimum-secret-value
+ENCRYPTION_KEY=change-me-to-a-fernet-key
 
 # Blockchain
 BLOCKCHAIN_NETWORK=${ENVIRONMENT}
@@ -473,7 +476,7 @@ ETHERSCAN_API_KEY=your_etherscan_api_key
 PRIVATE_KEY=your_private_key_for_deployment
 
 # Frontend
-REACT_APP_API_URL=http://localhost:8000
+REACT_APP_API_URL=http://localhost:8080
 REACT_APP_CHAIN_ID=1
 EOF
       log "$INFO" "Created default .env file"

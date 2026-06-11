@@ -62,16 +62,21 @@ main() {
 
   # 1. Stop and remove Docker containers
   log "INFO" "Stopping and removing Docker containers..."
-  if command -v docker-compose &> /dev/null; then
-    if [ -f "infrastructure/docker-compose.prod.yml" ]; then
-      docker-compose -f infrastructure/docker-compose.prod.yml down -v --remove-orphans || log "WARNING" "Failed to stop production containers."
-    fi
-    if [ -f "infrastructure/docker-compose.dev.yml" ]; then
-      docker-compose -f infrastructure/docker-compose.dev.yml down -v --remove-orphans || log "WARNING" "Failed to stop development containers."
+  # Resolve the Compose command (v2 plugin preferred, v1 fallback).
+  COMPOSE=""
+  if docker compose version &> /dev/null; then
+    COMPOSE="docker compose"
+  elif command -v docker-compose &> /dev/null; then
+    COMPOSE="docker-compose"
+  fi
+  if [ -n "$COMPOSE" ]; then
+    if [ -f "infrastructure/docker-compose.yml" ]; then
+      $COMPOSE -f infrastructure/docker-compose.yml down -v --remove-orphans \
+        || log "WARNING" "Failed to stop containers."
     fi
     log "SUCCESS" "Docker containers stopped and removed."
   else
-    log "WARNING" "docker-compose not found. Skipping container cleanup."
+    log "WARNING" "Docker Compose not found. Skipping container cleanup."
   fi
 
   # 2. Remove generated directories and files
@@ -90,12 +95,12 @@ main() {
 
   # Node.js dependencies and build artifacts
   safe_remove "code/blockchain/node_modules"
-  safe_remove "code/frontend/node_modules"
-  safe_remove "code/mobile-frontend/node_modules"
-  safe_remove "code/frontend/build"
-  safe_remove "code/frontend/dist"
-  safe_remove "code/mobile-frontend/build"
-  safe_remove "code/mobile-frontend/dist"
+  safe_remove "web-frontend/node_modules"
+  safe_remove "mobile-frontend/node_modules"
+  safe_remove "web-frontend/build"
+  safe_remove "web-frontend/dist"
+  safe_remove "mobile-frontend/build"
+  safe_remove "mobile-frontend/dist"
   safe_remove "node_modules" # Root node_modules
 
   # Configuration files created by scripts

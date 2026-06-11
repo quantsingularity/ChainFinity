@@ -198,7 +198,7 @@ DEBUG = $([ "$ENVIRONMENT" = "development" ] && echo "True" || echo "False")
 TESTING = $([ "$ENVIRONMENT" = "development" ] && echo "True" || echo "False")
 
 # Database
-DATABASE_URL = "${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/chainfinity}"
+DATABASE_URL = "${DATABASE_URL:-postgresql+asyncpg://postgres:postgres@localhost:5432/chainfinity}"
 
 # Redis
 REDIS_URL = "${REDIS_URL:-redis://localhost:6379/0}"
@@ -241,9 +241,9 @@ export PYTHONPATH="$deploy_dir"
 if command -v uvicorn &> /dev/null; then
   # Use gunicorn for production-ready deployment
   if [ "$ENVIRONMENT" = "production" ]; then
-    exec gunicorn -w \${WORKERS:-4} -b 0.0.0.0:\${PORT:-8000} app:app -k uvicorn.workers.UvicornWorker
+    exec gunicorn -w \${WORKERS:-4} -b 0.0.0.0:\${PORT:-8000} app.main:app -k uvicorn.workers.UvicornWorker
   else
-    exec uvicorn app:app --host 0.0.0.0 --port \${PORT:-8000} --reload
+    exec uvicorn app.main:app --host 0.0.0.0 --port \${PORT:-8000} --reload
   fi
 else
   echo "Error: uvicorn/gunicorn not found. Please install them."
@@ -261,7 +261,7 @@ EOF
 deploy_frontend() {
   log "INFO" "Deploying frontend for $ENVIRONMENT environment..."
 
-  local frontend_dir="$PROJECT_DIR/code/frontend"
+  local frontend_dir="$PROJECT_DIR/web-frontend"
   if [ ! -d "$frontend_dir" ]; then
     log "ERROR" "Frontend directory not found: $frontend_dir"
     return 1
@@ -285,7 +285,7 @@ deploy_frontend() {
 # Generated on: $(date)
 
 REACT_APP_ENV=$ENVIRONMENT
-REACT_APP_API_URL=${API_URL:-http://localhost:8000}
+REACT_APP_API_URL=${API_URL:-http://localhost:8080}
 REACT_APP_BLOCKCHAIN_NETWORK=${BLOCKCHAIN_NETWORK:-$ENVIRONMENT}
 REACT_APP_INFURA_KEY=${INFURA_API_KEY:-your_infura_api_key}
 EOF
@@ -326,7 +326,7 @@ EOF
 deploy_mobile_frontend() {
   log "INFO" "Deploying mobile frontend for $ENVIRONMENT environment..."
 
-  local mobile_dir="$PROJECT_DIR/code/mobile-frontend"
+  local mobile_dir="$PROJECT_DIR/mobile-frontend"
   if [ ! -d "$mobile_dir" ]; then
     log "WARNING" "Mobile frontend directory not found: $mobile_dir. Skipping deployment."
     return 0
@@ -350,7 +350,7 @@ deploy_mobile_frontend() {
 # Generated on: $(date)
 
 REACT_NATIVE_APP_ENV=$ENVIRONMENT
-REACT_NATIVE_API_URL=${API_URL:-http://localhost:8000}
+EXPO_PUBLIC_API_URL=${API_URL:-http://localhost:8080}
 REACT_NATIVE_BLOCKCHAIN_NETWORK=${BLOCKCHAIN_NETWORK:-$ENVIRONMENT}
 REACT_NATIVE_INFURA_KEY=${INFURA_API_KEY:-your_infura_api_key}
 EOF
@@ -430,18 +430,23 @@ update_infrastructure() {
     fi
   fi
 
-  # Check for Docker Compose files
-  local compose_file="$infra_dir/docker-compose.$ENVIRONMENT.yml"
+  # Check for the Docker Compose file (single compose file lives in
+  # infrastructure/; there are no per-environment compose files).
+  local compose_file="$infra_dir/docker-compose.yml"
+  local compose_cmd=""
+  if docker compose version &> /dev/null; then
+    compose_cmd="docker compose"
+  elif command_exists docker-compose; then
+    compose_cmd="docker-compose"
+  fi
   if [ -f "$compose_file" ]; then
     log "INFO" "Found Docker Compose configuration: $compose_file"
-    if command_exists docker-compose; then
+    if [ -n "$compose_cmd" ]; then
       if [ "$DRY_RUN" = true ]; then
         log "INFO" "[DRY RUN] Would run Docker Compose up"
       else
         log "INFO" "Starting/Updating Docker Compose services..."
-        docker-compose -f "$compose_file" up -d --build --remove-orphans
-
-        if [ $? -ne 0 ]; then
+        if ! $compose_cmd -f "$compose_file" up -d --build --remove-orphans; then
           log "ERROR" "Docker Compose up failed"
           return 1
         fi

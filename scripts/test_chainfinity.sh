@@ -15,6 +15,9 @@ NC='\033[0m' # No Color
 
 # Default Configuration
 PROJECT_DIR="$(pwd)"
+# LOG_FILE gets a real value once LOG_DIR is known; default keeps early
+# log() calls (e.g. during argument parsing) from tripping `set -u`.
+LOG_FILE="/dev/null"
 LOG_DIR="$PROJECT_DIR/logs"
 REPORT_DIR="$PROJECT_DIR/test-reports"
 TEST_TIMEOUT=300 # 5 minutes per test suite
@@ -82,7 +85,7 @@ run_blockchain_tests() {
       local coverage_file="coverage/coverage-summary.json"
       if [ -f "$coverage_file" ]; then
         local line_coverage=$(jq -r '.total.lines.pct' "$coverage_file")
-        if (( $(echo "$line_coverage < $COVERAGE_THRESHOLD" | bc -l) )); then
+        if [ "$(echo "$line_coverage < $COVERAGE_THRESHOLD" | bc -l)" = "1" ]; then
           log "WARNING" "Blockchain test coverage ($line_coverage%) is below threshold ($COVERAGE_THRESHOLD%)"
         else
           log "SUCCESS" "Blockchain test coverage: $line_coverage%"
@@ -135,7 +138,7 @@ run_backend_tests() {
     # Check coverage threshold
     if command_exists coverage; then
       local coverage_report=$(coverage report | grep TOTAL | awk '{print $NF}' | tr -d '%')
-      if (( $(echo "$coverage_report < $COVERAGE_THRESHOLD" | bc -l) )); then
+      if [ "$(echo "$coverage_report < $COVERAGE_THRESHOLD" | bc -l)" = "1" ]; then
         log "WARNING" "Backend test coverage ($coverage_report%) is below threshold ($COVERAGE_THRESHOLD%)"
       else
         log "SUCCESS" "Backend test coverage: $coverage_report%"
@@ -156,7 +159,7 @@ run_backend_tests() {
 run_frontend_tests() {
   log "INFO" "Running frontend tests..."
 
-  local frontend_dir="$PROJECT_DIR/code/frontend"
+  local frontend_dir="$PROJECT_DIR/web-frontend"
   if [ ! -d "$frontend_dir" ]; then
     log "ERROR" "Frontend directory not found: $frontend_dir"
     return 1
@@ -177,7 +180,7 @@ run_frontend_tests() {
     # Check coverage threshold
     if [ -f "coverage/coverage-summary.json" ] && command_exists jq; then
       local line_coverage=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
-      if (( $(echo "$line_coverage < $COVERAGE_THRESHOLD" | bc -l) )); then
+      if [ "$(echo "$line_coverage < $COVERAGE_THRESHOLD" | bc -l)" = "1" ]; then
         log "WARNING" "Frontend test coverage ($line_coverage%) is below threshold ($COVERAGE_THRESHOLD%)"
       else
         log "SUCCESS" "Frontend test coverage: $line_coverage%"
@@ -197,7 +200,7 @@ run_frontend_tests() {
 run_mobile_frontend_tests() {
   log "INFO" "Running mobile frontend tests..."
 
-  local mobile_dir="$PROJECT_DIR/code/mobile-frontend"
+  local mobile_dir="$PROJECT_DIR/mobile-frontend"
   if [ ! -d "$mobile_dir" ]; then
     log "WARNING" "Mobile frontend directory not found: $mobile_dir. Skipping tests."
     return 0
@@ -218,7 +221,7 @@ run_mobile_frontend_tests() {
     # Check coverage threshold
     if [ -f "coverage/coverage-summary.json" ] && command_exists jq; then
       local line_coverage=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
-      if (( $(echo "$line_coverage < $COVERAGE_THRESHOLD" | bc -l) )); then
+      if [ "$(echo "$line_coverage < $COVERAGE_THRESHOLD" | bc -l)" = "1" ]; then
         log "WARNING" "Mobile frontend test coverage ($line_coverage%) is below threshold ($COVERAGE_THRESHOLD%)"
       else
         log "SUCCESS" "Mobile frontend test coverage: $line_coverage%"

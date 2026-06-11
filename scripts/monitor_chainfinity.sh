@@ -442,7 +442,7 @@ create_default_config() {
   "api_endpoints": [
     {
       "name": "Backend API Health Check",
-      "url": "http://localhost:8000/api/health"
+      "url": "http://localhost:8080/health"
     },
     {
       "name": "Frontend Root",
