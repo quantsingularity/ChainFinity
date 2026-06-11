@@ -28,9 +28,9 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test --watchAll=false",
-    "test:watch": "react-scripts test",
-    "test:coverage": "react-scripts test --coverage --watchAll=false",
+    "test": "react-scripts test --watchAll=false --testPathIgnorePatterns=src/e2e --maxWorkers=2",
+    "test:watch": "react-scripts test --testPathIgnorePatterns=src/e2e --maxWorkers=2",
+    "test:coverage": "react-scripts test --coverage --watchAll=false --testPathIgnorePatterns=src/e2e --maxWorkers=2",
     "eject": "react-scripts eject",
     "lint": "eslint src --ext .js,.jsx",
     "format": "prettier --write \"src/**/*.{js,jsx,json,css,md}\"",
@@ -62,7 +62,8 @@
       "src/**/*.{js,jsx}",
       "!src/index.js",
       "!src/setupTests.js",
-      "!src/__mocks__/**"
+      "!src/__mocks__/**",
+      "!src/e2e/**"
     ]
   }
 }

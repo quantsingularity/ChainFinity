@@ -134,13 +134,14 @@ const MOCK_TRANSACTIONS = [
 
 export const usePortfolioData = (walletAddress) => {
   const { user } = useApp();
+  const userWallet = user ? user.wallet_address : null;
   const [portfolioData, setPortfolioData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchPortfolioData = async () => {
-      const address = walletAddress || (user ? user.wallet_address : null);
+      const address = walletAddress || userWallet;
 
       try {
         setLoading(true);
@@ -162,12 +163,12 @@ export const usePortfolioData = (walletAddress) => {
     };
 
     fetchPortfolioData();
-  }, [walletAddress, user]);
+  }, [walletAddress, userWallet]);
 
   const refreshPortfolio = async () => {
     setLoading(true);
     try {
-      const address = walletAddress || (user ? user.wallet_address : null);
+      const address = walletAddress || userWallet;
       if (address) {
         const response = await blockchainAPI.getPortfolio(address);
         setPortfolioData(response.data);
@@ -190,13 +191,14 @@ export const usePortfolioData = (walletAddress) => {
 
 export const useTransactionHistory = (walletAddress) => {
   const { user } = useApp();
+  const userWallet = user ? user.wallet_address : null;
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchTransactions = async () => {
-      const address = walletAddress || (user ? user.wallet_address : null);
+      const address = walletAddress || userWallet;
 
       try {
         setLoading(true);
@@ -216,12 +218,12 @@ export const useTransactionHistory = (walletAddress) => {
     };
 
     fetchTransactions();
-  }, [walletAddress, user]);
+  }, [walletAddress, userWallet]);
 
   const refreshTransactions = async () => {
     setLoading(true);
     try {
-      const address = walletAddress || (user ? user.wallet_address : null);
+      const address = walletAddress || userWallet;
       if (address) {
         const response = await blockchainAPI.getTransactions(address);
         setTransactions(response.data);

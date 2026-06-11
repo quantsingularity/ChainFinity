@@ -32,7 +32,9 @@ const renderSettings = () =>
 describe("Settings Page", () => {
   test("renders settings page title", () => {
     renderSettings();
-    expect(screen.getByText(/Settings/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /Settings/i }),
+    ).toBeInTheDocument();
   });
 
   test("renders all tabs", () => {
@@ -50,9 +52,7 @@ describe("Settings Page", () => {
   test("renders profile form by default", () => {
     renderSettings();
     expect(screen.getByDisplayValue("John Doe")).toBeInTheDocument();
-    expect(
-      screen.getByDisplayValue("john.doe@example.com"),
-    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("john@example.com")).toBeInTheDocument();
   });
 
   test("switches to Security tab on click", async () => {

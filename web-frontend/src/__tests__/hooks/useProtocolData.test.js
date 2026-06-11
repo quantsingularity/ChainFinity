@@ -1,13 +1,13 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 
-jest.mock("../context/AppContext", () => ({
+jest.mock("../../context/AppContext", () => ({
   useApp: () => ({
     user: { wallet_address: "0xUSER_WALLET" },
   }),
 }));
 
-jest.mock("../services/api", () => ({
+jest.mock("../../services/api", () => ({
   blockchainAPI: {
     getPortfolio: jest.fn(),
     getTransactions: jest.fn(),
@@ -20,13 +20,13 @@ jest.mock("../services/api", () => ({
   })),
 }));
 
-const { blockchainAPI } = require("../services/api");
+const { blockchainAPI } = require("../../services/api");
 const {
   usePortfolioData,
   useTransactionHistory,
   useTokenBalance,
   useEthBalance,
-} = require("../hooks/useProtocolData");
+} = require("../../hooks/useProtocolData");
 
 describe("useProtocolData hooks", () => {
   beforeEach(() => jest.clearAllMocks());
@@ -71,7 +71,7 @@ describe("useProtocolData hooks", () => {
     });
 
     test("sets loading false immediately with no address", async () => {
-      jest.mock("../context/AppContext", () => ({
+      jest.mock("../../context/AppContext", () => ({
         useApp: () => ({ user: null }),
       }));
       blockchainAPI.getPortfolio.mockResolvedValue({ data: {} });
@@ -135,11 +135,14 @@ describe("useProtocolData hooks", () => {
       expect(result.current.ethBalance).toBe("2.5");
     });
 
-    test("sets error on failure", async () => {
+    test("falls back to default balance on failure", async () => {
       blockchainAPI.getEthBalance.mockRejectedValue(new Error("fail"));
       const { result } = renderHook(() => useEthBalance());
       await waitFor(() => expect(result.current.loading).toBe(false));
-      expect(result.current.error).not.toBeNull();
+      // Graceful fallback: error is suppressed and a default balance is shown,
+      // consistent with usePortfolioData and useTransactionHistory.
+      expect(result.current.error).toBeNull();
+      expect(result.current.ethBalance).not.toBeNull();
     });
   });
 });

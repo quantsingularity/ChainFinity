@@ -42,7 +42,7 @@ describe("Login Component", () => {
     renderLogin();
     expect(screen.getByText(/Welcome Back/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Password/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Sign In/i }),
     ).toBeInTheDocument();
@@ -69,7 +69,7 @@ describe("Login Component", () => {
     renderLogin();
 
     const emailInput = screen.getByLabelText(/Email Address/i);
-    const passwordInput = screen.getByLabelText(/Password/i);
+    const passwordInput = screen.getByLabelText(/^Password/i);
     const submitButton = screen.getByRole("button", { name: /Sign In/i });
 
     await user.type(emailInput, "test@example.com");
@@ -95,7 +95,7 @@ describe("Login Component", () => {
     const user = userEvent.setup();
     renderLogin();
 
-    const passwordInput = screen.getByLabelText(/Password/i);
+    const passwordInput = screen.getByLabelText(/^Password/i);
     expect(passwordInput).toHaveAttribute("type", "password");
 
     const toggleButton = screen.getByLabelText(/toggle password visibility/i);

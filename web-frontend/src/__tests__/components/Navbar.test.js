@@ -68,14 +68,14 @@ describe("Navbar Component", () => {
 
   test("opens account menu on avatar click", () => {
     renderNavbar();
-    const accountBtn = screen.getByTitle("Account");
+    const accountBtn = screen.getByRole("button", { name: /Account/i });
     fireEvent.click(accountBtn);
     expect(screen.getByText("Sign Out")).toBeInTheDocument();
   });
 
   test("calls logout when Sign Out clicked", () => {
     renderNavbar();
-    const accountBtn = screen.getByTitle("Account");
+    const accountBtn = screen.getByRole("button", { name: /Account/i });
     fireEvent.click(accountBtn);
     const logoutItem = screen.getByText("Sign Out");
     fireEvent.click(logoutItem);

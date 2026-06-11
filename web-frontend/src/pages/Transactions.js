@@ -272,52 +272,62 @@ const Transactions = () => {
                   View and manage your transaction history
                 </Typography>
               </Box>
-              <Button
-                variant="contained"
-                startIcon={<GetApp />}
-                sx={{
-                  borderRadius: "12px",
-                  boxShadow: "none",
-                }}
-                onClick={() => {
-                  const headers = [
-                    "Hash",
-                    "Type",
-                    "From",
-                    "To",
-                    "Value",
-                    "Token",
-                    "Network",
-                    "Status",
-                    "Date",
-                  ];
-                  const rows = filteredTransactions.map((tx) => [
-                    tx.hash,
-                    tx.type,
-                    tx.from,
-                    tx.to,
-                    tx.value,
-                    tx.token,
-                    tx.network,
-                    tx.status,
-                    tx.timestamp
-                      ? new Date(tx.timestamp * 1000).toLocaleString()
-                      : tx.date || "",
-                  ]);
-                  const csv = [headers, ...rows]
-                    .map((r) => r.join(","))
-                    .join("\n");
-                  const blob = new Blob([csv], { type: "text/csv" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = "transactions.csv";
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
-              >
-                Export CSV
-              </Button>
+              <Box sx={{ display: "flex", gap: 1.5 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<Refresh />}
+                  sx={{ borderRadius: "12px", boxShadow: "none" }}
+                  onClick={refreshTransactions}
+                >
+                  Refresh
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<GetApp />}
+                  sx={{
+                    borderRadius: "12px",
+                    boxShadow: "none",
+                  }}
+                  onClick={() => {
+                    const headers = [
+                      "Hash",
+                      "Type",
+                      "From",
+                      "To",
+                      "Value",
+                      "Token",
+                      "Network",
+                      "Status",
+                      "Date",
+                    ];
+                    const rows = filteredTransactions.map((tx) => [
+                      tx.hash,
+                      tx.type,
+                      tx.from,
+                      tx.to,
+                      tx.value,
+                      tx.token,
+                      tx.network,
+                      tx.status,
+                      tx.timestamp
+                        ? new Date(tx.timestamp * 1000).toLocaleString()
+                        : tx.date || "",
+                    ]);
+                    const csv = [headers, ...rows]
+                      .map((r) => r.join(","))
+                      .join("\n");
+                    const blob = new Blob([csv], { type: "text/csv" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "transactions.csv";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Export CSV
+                </Button>
+              </Box>
             </Box>
           </motion.div>
 

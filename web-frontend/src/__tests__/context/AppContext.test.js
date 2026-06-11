@@ -55,6 +55,14 @@ describe("AppContext", () => {
     jest.clearAllMocks();
     localStorage.clear();
     authAPI.getCurrentUser.mockRejectedValue(new Error("No token"));
+    // clearAllMocks() wipes the factory implementation of handleApiError,
+    // after which it returns undefined and setError(undefined) leaves the
+    // error state null. Re-establish the implementation each test.
+    handleApiError.mockImplementation((err) => ({
+      status: err?.response?.status || 0,
+      message:
+        err?.response?.data?.detail || err?.message || "An error occurred",
+    }));
   });
 
   test("provides default unauthenticated state", async () => {

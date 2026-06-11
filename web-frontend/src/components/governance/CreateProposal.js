@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { isValidAddress } from "../../utils/helpers";
 
 const CreateProposal = ({ onSubmit }) => {
   const [form, setForm] = useState({
@@ -25,6 +26,14 @@ const CreateProposal = ({ onSubmit }) => {
     if (!form.title.trim()) e.title = "Title is required";
     if (!form.description.trim()) e.description = "Description is required";
     if (form.title.length > 200) e.title = "Title must be under 200 characters";
+    // Target address is optional, but when provided it must be a valid
+    // Ethereum address; previously any string was accepted and submitted.
+    if (
+      form.targetAddress.trim() &&
+      !isValidAddress(form.targetAddress.trim())
+    ) {
+      e.targetAddress = "Enter a valid Ethereum address (0x + 40 hex chars)";
+    }
     return e;
   };
 
@@ -42,7 +51,9 @@ const CreateProposal = ({ onSubmit }) => {
     }
     setSubmitting(true);
     try {
-      await onSubmit(form);
+      if (onSubmit) {
+        await onSubmit(form);
+      }
       setForm({ title: "", description: "", calldata: "", targetAddress: "" });
     } finally {
       setSubmitting(false);
@@ -99,7 +110,11 @@ const CreateProposal = ({ onSubmit }) => {
             placeholder="0x..."
             value={form.targetAddress}
             onChange={handleChange("targetAddress")}
-            helperText="The contract address this proposal will interact with"
+            error={Boolean(errors.targetAddress)}
+            helperText={
+              errors.targetAddress ||
+              "The contract address this proposal will interact with"
+            }
             sx={{ mb: 3 }}
           />
 

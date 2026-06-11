@@ -1,8 +1,16 @@
 import axios from "axios";
 
+// Base URL of the backend, e.g. http://localhost:8000. All endpoint paths
+// below include the backend's versioned prefix (/api/v1/...). The previous
+// version hit /api/auth/token and /api/blockchain/... — neither of which the
+// backend serves (it exposes /api/v1/auth/login, /api/v1/auth/me, and
+// /api/v1/blockchain/...), so every real request 404'd and the app only
+// appeared to work via its demo-mode and mock-data fallbacks.
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
 // Create an axios instance with default config
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:8000",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -35,22 +43,22 @@ api.interceptors.response.use(
   },
 );
 
-// Auth API endpoints
+// Auth API endpoints (backend: /api/v1/auth/*)
 export const authAPI = {
-  register: (userData) => api.post("/api/auth/register", userData),
-  login: (credentials) => api.post("/api/auth/token", credentials),
-  getCurrentUser: () => api.get("/api/auth/me"),
+  register: (userData) => api.post("/api/v1/auth/register", userData),
+  login: (credentials) => api.post("/api/v1/auth/login", credentials),
+  getCurrentUser: () => api.get("/api/v1/auth/me"),
 };
 
-// Blockchain API endpoints
+// Blockchain API endpoints (backend: /api/v1/blockchain/*)
 export const blockchainAPI = {
   getPortfolio: (walletAddress) =>
-    api.get(`/api/blockchain/portfolio/${walletAddress}`),
+    api.get(`/api/v1/blockchain/portfolio/${walletAddress}`),
   getTransactions: (walletAddress) =>
-    api.get(`/api/blockchain/transactions/${walletAddress}`),
+    api.get(`/api/v1/blockchain/transactions/${walletAddress}`),
   getTokenBalance: (tokenAddress, network = "ethereum") =>
-    api.get(`/api/blockchain/balance/${tokenAddress}?network=${network}`),
-  getEthBalance: () => api.get("/api/blockchain/eth-balance"),
+    api.get(`/api/v1/blockchain/balance/${tokenAddress}?network=${network}`),
+  getEthBalance: () => api.get("/api/v1/blockchain/eth-balance"),
 };
 
 // Helper function to handle API errors

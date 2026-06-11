@@ -7,13 +7,23 @@ export const formatAddress = (address) => {
 // Format token amount (ethers v6 compatible)
 export const formatTokenAmount = (amount, decimals = 18) => {
   try {
-    // Handle BigInt or string amounts without ethers dependency
+    // Handle BigInt or string amounts without an ethers dependency.
     const num = typeof amount === "bigint" ? amount : BigInt(amount);
     const divisor = BigInt(10) ** BigInt(decimals);
     const whole = num / divisor;
     const fraction = num % divisor;
-    const fractionStr = fraction.toString().padStart(decimals, "0").slice(0, 6);
-    return `${whole}.${fractionStr}`.replace(/\.?0+$/, "");
+    if (fraction === 0n) {
+      return whole.toString();
+    }
+    // Show up to 6 fractional digits, then trim trailing zeros. Trimming is
+    // applied ONLY to the fractional part so the integer part is never
+    // altered (a naive /\.?0+$/ on the whole string is fragile).
+    const fractionStr = fraction
+      .toString()
+      .padStart(decimals, "0")
+      .slice(0, 6)
+      .replace(/0+$/, "");
+    return fractionStr ? `${whole}.${fractionStr}` : whole.toString();
   } catch (error) {
     console.error("Error formatting token amount:", error);
     return "0";

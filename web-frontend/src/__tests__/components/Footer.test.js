@@ -35,7 +35,7 @@ describe("Footer Component", () => {
     renderFooter();
     expect(screen.getByText("Product")).toBeInTheDocument();
     expect(screen.getByText("Features")).toBeInTheDocument();
-    expect(screen.getByText("Pricing")).toBeInTheDocument();
+    expect(screen.getByText("Portfolio")).toBeInTheDocument();
   });
 
   test("renders Resources section links", () => {

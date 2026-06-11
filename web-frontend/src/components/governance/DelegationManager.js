@@ -10,17 +10,28 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
-import { formatAddress } from "../../utils/helpers";
+import { formatAddress, isValidAddress } from "../../utils/helpers";
 
-const DelegationManager = ({ delegatedTo, delegatedFrom, onDelegate }) => {
+const DelegationManager = ({ delegatedTo, delegatedFrom = [], onDelegate }) => {
   const [delegateAddress, setDelegateAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [addressError, setAddressError] = useState("");
 
   const handleDelegate = async () => {
-    if (!delegateAddress.trim()) return;
+    const address = delegateAddress.trim();
+    if (!address) return;
+    // Validate the address format before submitting; previously any string
+    // (typos, ENS-less names, partial pastes) was sent straight through.
+    if (!isValidAddress(address)) {
+      setAddressError("Enter a valid Ethereum address (0x + 40 hex chars)");
+      return;
+    }
+    setAddressError("");
     setSubmitting(true);
     try {
-      await onDelegate(delegateAddress.trim());
+      if (onDelegate) {
+        await onDelegate(address);
+      }
       setDelegateAddress("");
     } finally {
       setSubmitting(false);
@@ -91,7 +102,12 @@ const DelegationManager = ({ delegatedTo, delegatedFrom, onDelegate }) => {
           size="small"
           placeholder="0x... wallet address"
           value={delegateAddress}
-          onChange={(e) => setDelegateAddress(e.target.value)}
+          onChange={(e) => {
+            setDelegateAddress(e.target.value);
+            if (addressError) setAddressError("");
+          }}
+          error={Boolean(addressError)}
+          helperText={addressError || undefined}
           sx={{ mb: 1.5 }}
         />
         <Button

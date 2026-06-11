@@ -196,7 +196,11 @@ const Navbar = () => {
           {isAuthenticated ? (
             <>
               <Tooltip title="Account">
-                <IconButton onClick={handleMenuOpen} size="small">
+                <IconButton
+                  onClick={handleMenuOpen}
+                  size="small"
+                  aria-label="Account"
+                >
                   <Avatar
                     sx={{
                       width: 36,

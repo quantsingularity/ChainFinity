@@ -86,8 +86,10 @@ describe("Dashboard Component", () => {
 
   test("displays assets list", () => {
     renderDashboard();
-    expect(screen.getByText("ETH")).toBeInTheDocument();
-    expect(screen.getByText("BTC")).toBeInTheDocument();
+    // ETH/BTC appear in both the assets list and the recent-transactions
+    // panel, so assert at least one occurrence of each.
+    expect(screen.getAllByText("ETH").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("BTC").length).toBeGreaterThan(0);
   });
 
   test("displays transactions", () => {

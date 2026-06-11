@@ -63,7 +63,9 @@ const renderTransactions = () =>
 describe("Transactions Page", () => {
   test("renders page heading", () => {
     renderTransactions();
-    expect(screen.getByText(/Transaction/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /Transactions/i }),
+    ).toBeInTheDocument();
   });
 
   test("renders transaction table headers", () => {
@@ -101,8 +103,11 @@ describe("Transactions Page", () => {
     expect(refreshBtn).toBeInTheDocument();
   });
 
-  test("renders type filter", () => {
+  test("renders type filter", async () => {
+    const user = userEvent.setup();
     renderTransactions();
-    expect(screen.getByLabelText(/Type/i)).toBeInTheDocument();
+    // The Type filter is inside the collapsible "Filters" panel.
+    await user.click(screen.getByRole("button", { name: /Filters/i }));
+    expect(await screen.findByLabelText(/Type/i)).toBeInTheDocument();
   });
 });

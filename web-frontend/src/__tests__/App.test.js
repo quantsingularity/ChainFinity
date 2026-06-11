@@ -41,7 +41,8 @@ describe("App Component", () => {
 
   test("renders Navbar component", () => {
     renderWithProviders(<App />);
-    expect(screen.getByText(/ChainFinity/i)).toBeInTheDocument();
+    // "ChainFinity" is the brand in both the navbar and the footer.
+    expect(screen.getAllByText(/ChainFinity/i).length).toBeGreaterThan(0);
   });
 
   test("renders Footer component", () => {
