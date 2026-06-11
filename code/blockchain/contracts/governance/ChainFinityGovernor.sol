@@ -31,8 +31,8 @@ contract ChainFinityGovernor is
     )
         Governor("ChainFinity Governor")
         GovernorSettings(
-            1 days /* Voting delay: 1 day */,
-            7 days /* Voting period: 1 week */,
+            7200 /* Voting delay: ~1 day in blocks (12s/block) */,
+            50400 /* Voting period: ~1 week in blocks (12s/block) */,
             0 /* Proposal threshold: 0 tokens */
         )
         GovernorVotes(_token)
@@ -54,7 +54,7 @@ contract ChainFinityGovernor is
         uint8 support,
         uint256 weight,
         bytes memory params
-    ) internal override(GovernorCountingSimple) {
+    ) internal override(Governor, GovernorCountingSimple) {
         // If quadratic voting is enabled and params are provided
         if (params.length > 0) {
             // Extract quadratic voting flag from params

@@ -109,10 +109,18 @@ class VolatilityForecaster:
 
     def _build_target(self, df: pd.DataFrame) -> pd.Series:
         """
-        Target = realized volatility `forecast_horizon` days ahead.
+        Target = realized volatility over the NEXT `forecast_horizon` days.
+
+        The rolling realized vol at time t covers the window ending at t
+        (i.e. the past). Shifting it back by `forecast_horizon` aligns the
+        value computed over [t+1, t+horizon] with timestamp t, so the model
+        is trained to predict future volatility instead of reproducing the
+        volatility it can already observe in its input features.
         """
         log_ret = self._log_returns(df["close"])
-        target = self._realized_vol(log_ret, self.forecast_horizon)
+        past_vol = self._realized_vol(log_ret, self.forecast_horizon)
+        # Align future-window vol with the present timestamp.
+        target = past_vol.shift(-self.forecast_horizon)
         return target
 
     # ------------------------------------------------------------------

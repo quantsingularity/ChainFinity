@@ -686,7 +686,7 @@ class TestPortfolioServiceExtended:
     @pytest.mark.asyncio
     async def test_calculate_portfolio_value_empty(self, svc, db, portfolio):
         portfolio.assets = []
-        portfolio._cash_balance = Decimal("0")
+        portfolio.cash_balance = Decimal("0")
         db.execute = AsyncMock(
             return_value=Mock(scalar_one_or_none=Mock(return_value=portfolio))
         )

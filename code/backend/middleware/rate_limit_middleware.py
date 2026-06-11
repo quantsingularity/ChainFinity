@@ -4,6 +4,7 @@ Rate limiting middleware for API protection
 
 import logging
 import time
+import uuid
 from typing import Any, Callable
 
 from config.database import get_redis
@@ -99,7 +100,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             current_count = await redis_client.zcard(key)
             if current_count >= self.rate_limit_per_minute:
                 return True
-            await redis_client.zadd(key, {str(current_time): current_time})
+            # Member must be unique per request; using the epoch-second alone
+            # would collapse every request within the same second into a
+            # single entry and effectively disable rate limiting.
+            member = f"{current_time}:{uuid.uuid4().hex}"
+            await redis_client.zadd(key, {member: current_time})
             await redis_client.expire(key, 120)
             return False
         except Exception as e:

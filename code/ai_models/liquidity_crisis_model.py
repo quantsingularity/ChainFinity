@@ -265,13 +265,13 @@ class LiquidityCrisisDetector:
         tvl_scores = self.tvl_monitor.score(tvl_series)
 
         spread_scores = (
-            self.spread_model.score(spread_series.reindex(idx).fillna(method="ffill"))
+            self.spread_model.score(spread_series.reindex(idx).ffill())
             if spread_series is not None
             else pd.Series(0.0, index=idx)
         )
 
         depeg_scores = (
-            self.depeg_detector.score(price_series.reindex(idx).fillna(method="ffill"))
+            self.depeg_detector.score(price_series.reindex(idx).ffill())
             if price_series is not None
             else pd.Series(0.0, index=idx)
         )

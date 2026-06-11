@@ -79,7 +79,7 @@ class PermissionChecker:
         """
         Check if user has required permissions
         """
-        if hasattr(current_user, "is_admin") and current_user.is_admin:
+        if bool(getattr(current_user, "is_admin", False)):
             return current_user
         for permission in self.required_permissions:
             if not self._user_has_permission(current_user, permission):
@@ -102,13 +102,18 @@ class PermissionChecker:
         if permission in basic_permissions:
             return user.is_active()
         admin_permissions = [
+            "admin_access",
             "read_all_users",
             "manage_compliance",
             "view_audit_logs",
             "manage_risk_settings",
         ]
         if permission in admin_permissions:
-            return hasattr(user, "is_admin") and user.is_admin
+            # Note: admins already short-circuit in __call__; this keeps the
+            # permission list authoritative for non-shortcut callers. The
+            # previous list omitted "admin_access", so the require_admin
+            # checker could never pass for anyone.
+            return bool(getattr(user, "is_admin", False))
         return False
 
 

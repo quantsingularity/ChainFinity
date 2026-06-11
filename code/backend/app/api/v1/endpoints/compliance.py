@@ -15,6 +15,7 @@ from models.compliance import (
     ComplianceCheck,
     ComplianceStatus,
     RegulatoryReport,
+    ReportType,
 )
 from models.user import User
 from schemas.compliance import (
@@ -214,7 +215,7 @@ async def list_audit_logs(
         query = select(AuditLog).where(AuditLog.user_id == current_user.id)
 
         if action:
-            query = query.where(AuditLog.action == action)
+            query = query.where(AuditLog.event_name == action)
         if start_date:
             query = query.where(AuditLog.created_at >= start_date)
         if end_date:
@@ -251,7 +252,12 @@ async def list_regulatory_reports(
         query = select(RegulatoryReport)
 
         if report_type:
-            query = query.where(RegulatoryReport.report_type == report_type)
+            try:
+                query = query.where(
+                    RegulatoryReport.report_type == ReportType(report_type.lower())
+                )
+            except ValueError:
+                return []
 
         query = (
             query.order_by(desc(RegulatoryReport.created_at))
@@ -288,21 +294,38 @@ async def generate_regulatory_report(
     Generate a new regulatory report
     """
     try:
+        try:
+            report_type_enum = ReportType(report_type.lower())
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Invalid report type. Valid types: "
+                    + ", ".join(t.value for t in ReportType)
+                ),
+            )
+        if end_date <= start_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="end_date must be after start_date",
+            )
+
         report = RegulatoryReport(
-            report_type=report_type,
-            report_period_start=start_date,
-            report_period_end=end_date,
-            report_status="generated",
+            report_type=report_type_enum,
+            report_name=f"{report_type_enum.value.upper()} report",
+            period_start=start_date,
+            period_end=end_date,
             report_data={
                 "generated_by": str(current_user.id),
                 "generated_at": datetime.now(timezone.utc).isoformat(),
-                "report_type": report_type,
+                "report_type": report_type_enum.value,
                 "period": {
                     "start": start_date.isoformat(),
                     "end": end_date.isoformat(),
                 },
             },
-            generated_by_user_id=current_user.id,
+            generated_by=current_user.id,
+            generated_at=datetime.now(timezone.utc),
         )
 
         db.add(report)
@@ -311,6 +334,8 @@ async def generate_regulatory_report(
 
         return report
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error generating regulatory report: {e}")
         raise HTTPException(

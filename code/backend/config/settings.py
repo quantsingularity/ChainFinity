@@ -233,6 +233,16 @@ class Settings(BaseSettings):
                 self.CORS_ORIGINS = settings.CORS_ORIGINS
                 self.CORS_ALLOW_CREDENTIALS = settings.CORS_ALLOW_CREDENTIALS
                 self.ALLOWED_HOSTS = settings.ALLOWED_HOSTS
+                # Password policy (previously missing here, which made
+                # UserService._validate_password_strength raise AttributeError)
+                self.PASSWORD_MIN_LENGTH = settings.PASSWORD_MIN_LENGTH
+                self.PASSWORD_REQUIRE_UPPERCASE = settings.PASSWORD_REQUIRE_UPPERCASE
+                self.PASSWORD_REQUIRE_LOWERCASE = settings.PASSWORD_REQUIRE_LOWERCASE
+                self.PASSWORD_REQUIRE_NUMBERS = settings.PASSWORD_REQUIRE_NUMBERS
+                self.PASSWORD_REQUIRE_SPECIAL = settings.PASSWORD_REQUIRE_SPECIAL
+                self.API_KEY_HEADER = settings.API_KEY_HEADER
+                self.ENCRYPTION_KEY = settings.ENCRYPTION_KEY
+                self.FIELD_ENCRYPTION_ENABLED = settings.FIELD_ENCRYPTION_ENABLED
 
         return SecuritySettings(self)
 

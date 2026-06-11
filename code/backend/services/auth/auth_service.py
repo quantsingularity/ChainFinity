@@ -149,6 +149,13 @@ class AuthService:
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Wallet address already registered",
                     )
+            is_valid, error_message = self.password_service.validate_password_strength(
+                password
+            )
+            if not is_valid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail=error_message
+                )
             hashed_password = self.password_service.hash_password(password)
             user = User(
                 email=email,
@@ -245,6 +252,13 @@ class AuthService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Current password is incorrect",
                 )
+            is_valid, error_message = self.password_service.validate_password_strength(
+                new_password
+            )
+            if not is_valid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail=error_message
+                )
             new_hashed_password = self.password_service.hash_password(new_password)
             user.hashed_password = new_hashed_password
             user.password_changed_at = datetime.now(timezone.utc)
@@ -270,6 +284,12 @@ class AuthService:
                     detail="Token has been invalidated",
                 )
             payload = self.jwt_service.verify_access_token(token)
+            if payload.get("purpose"):
+                # Tokens minted for a specific purpose (e.g. password reset)
+                # must never grant general API access.
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+                )
             user_id = payload.get("sub")
             if not user_id:
                 raise HTTPException(
@@ -294,6 +314,67 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
             )
+
+    def create_password_reset_token(self, user: User) -> str:
+        """Create a short-lived, single-purpose password reset token."""
+        from datetime import timedelta
+
+        return self.jwt_service.create_access_token(
+            data={"sub": str(user.id), "purpose": "password_reset"},
+            expires_delta=timedelta(minutes=30),
+        )
+
+    async def reset_password_with_token(
+        self,
+        db: AsyncSession,
+        token: str,
+        new_password: str,
+        ip_address: str,
+        user_agent: str,
+    ) -> None:
+        """Reset a user's password using a valid password-reset token."""
+        try:
+            payload = self.jwt_service.verify_access_token(token)
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset token",
+            )
+        if payload.get("purpose") != "password_reset" or not payload.get("sub"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset token",
+            )
+        if await self._is_token_blacklisted(token):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Reset token has already been used",
+            )
+        result = await db.execute(
+            select(User).where(
+                User.id == UUID(payload["sub"]), User.is_deleted == False
+            )
+        )
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset token",
+            )
+        is_valid, error_message = self.password_service.validate_password_strength(
+            new_password
+        )
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=error_message
+            )
+        user.hashed_password = self.password_service.hash_password(new_password)
+        user.password_changed_at = datetime.now(timezone.utc)
+        user.reset_failed_login()
+        await db.commit()
+        # Single-use: blacklist the token for its remaining lifetime.
+        await self._invalidate_token(token)
+        await self._log_password_change(db, user, ip_address, user_agent)
 
     async def _generate_tokens(self, user: User) -> Dict[str, str]:
         """Generate access and refresh tokens"""

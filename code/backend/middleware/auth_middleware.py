@@ -52,9 +52,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     def _is_public_path(self, path: str) -> bool:
         """
-        Check if the request path is public
+        Check if the request path is public.
+
+        The root path is matched exactly; matching it with startswith would
+        classify every path as public.
         """
         for public_path in self.public_paths:
-            if path.startswith(public_path):
+            if public_path == "/":
+                if path == "/":
+                    return True
+            elif path == public_path or path.startswith(public_path + "/"):
                 return True
         return False

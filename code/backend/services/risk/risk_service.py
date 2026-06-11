@@ -545,6 +545,68 @@ class RiskService:
             recs.append(f"Review {len(alerts_or_metrics)} active alert(s) promptly.")
         return recs
 
+    async def calculate_risk_metrics(
+        self, portfolio_id: Any, user_id: Any
+    ) -> Optional[RiskMetricsData]:
+        """Return detailed risk metrics for a portfolio (endpoint-facing).
+
+        Resolves the portfolio (scoped to the owner) and computes the same
+        RiskMetricsData used by assess_portfolio_risk. Returns None when the
+        portfolio cannot be found so the endpoint can emit zeroed metrics.
+        """
+        from uuid import UUID as _UUID
+
+        try:
+            if not isinstance(portfolio_id, _UUID):
+                portfolio_id = _UUID(str(portfolio_id))
+            if not isinstance(user_id, _UUID):
+                user_id = _UUID(str(user_id))
+        except (ValueError, AttributeError, TypeError):
+            return None
+
+        portfolio = await self._get_portfolio_with_assets(portfolio_id, user_id)
+        if not portfolio:
+            return None
+        return await self._calculate_risk_metrics(portfolio)
+
+    async def perform_stress_test(
+        self, portfolio_id: Any, user_id: Any, scenario_name: str = "Market Crash"
+    ) -> Dict[str, Any]:
+        """Run stress tests for a portfolio (endpoint-facing).
+
+        Returns the full set of scenario results plus, when present, the
+        result for the requested named scenario.
+        """
+        from uuid import UUID as _UUID
+
+        try:
+            if not isinstance(portfolio_id, _UUID):
+                portfolio_id = _UUID(str(portfolio_id))
+            if not isinstance(user_id, _UUID):
+                user_id = _UUID(str(user_id))
+        except (ValueError, AttributeError, TypeError):
+            return {"scenario": scenario_name, "results": [], "error": "invalid id"}
+
+        portfolio = await self._get_portfolio_with_assets(portfolio_id, user_id)
+        if not portfolio:
+            return {"scenario": scenario_name, "results": []}
+
+        all_results = await self._perform_stress_tests(portfolio)
+        selected = next(
+            (
+                r
+                for r in all_results
+                if str(r.get("scenario", r.get("name", ""))).lower()
+                == scenario_name.lower()
+            ),
+            None,
+        )
+        return {
+            "scenario": scenario_name,
+            "selected": selected,
+            "results": all_results,
+        }
+
     async def assess_portfolio_risk(self, portfolio_id: Any, user_id: Any) -> Any:
         """
         Comprehensive portfolio risk assessment.

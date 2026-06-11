@@ -15,12 +15,30 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
 logger = logging.getLogger(__name__)
+
+
+def _async_connect_args(url: str) -> dict:
+    """Connection arguments applied per-dialect at connect time."""
+    if "postgresql" in url or "asyncpg" in url:
+        # asyncpg accepts server settings directly; this replaces the old
+        # (broken) `connect` event that tried to run a sync cursor against
+        # the asyncpg adapted connection.
+        return {
+            "server_settings": {
+                "timezone": "UTC",
+                "statement_timeout": "30000",  # milliseconds
+            }
+        }
+    return {}
+
+
 async_engine = create_async_engine(
     settings.database.DATABASE_URL,
     echo=settings.database.DB_ECHO,
     echo_pool=settings.database.DB_ECHO_POOL,
     poolclass=NullPool,  # Use NullPool for async
     future=True,
+    connect_args=_async_connect_args(settings.database.DATABASE_URL),
 )
 async_read_engine = None
 if settings.database.DATABASE_READ_URL:
@@ -30,6 +48,7 @@ if settings.database.DATABASE_READ_URL:
         echo_pool=settings.database.DB_ECHO_POOL,
         poolclass=NullPool,  # Use NullPool for async
         future=True,
+        connect_args=_async_connect_args(settings.database.DATABASE_READ_URL),
     )
 AsyncSessionLocal = async_sessionmaker(
     bind=async_engine,
@@ -83,7 +102,8 @@ async def close_redis() -> None:
     """Close Redis connection"""
     global redis_client
     if redis_client:
-        await redis_client.close()
+        closer = getattr(redis_client, "aclose", None) or redis_client.close
+        await closer()
         redis_client = None
         logger.info("Redis connection closed")
 
@@ -91,15 +111,6 @@ async def close_redis() -> None:
 def get_redis() -> Optional[redis.Redis]:
     """Get Redis client instance"""
     return redis_client
-
-
-@event.listens_for(async_engine.sync_engine, "connect")
-def set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> Any:
-    """Set database connection parameters"""
-    if "postgresql" in str(dbapi_connection):
-        with dbapi_connection.cursor() as cursor:
-            cursor.execute("SET timezone TO 'UTC'")
-            cursor.execute("SET statement_timeout = '30s'")
 
 
 @event.listens_for(async_engine.sync_engine, "checkout")
@@ -287,15 +298,15 @@ class DatabaseManager:
     @asynccontextmanager
     async def transaction():
         """
-        Context manager for database transactions with automatic rollback
+        Context manager for database transactions with automatic rollback.
+
+        session.begin() commits on success and rolls back on exception, so no
+        explicit rollback is needed (calling it inside the begin() block would
+        attempt a second rollback).
         """
         async with AsyncSessionLocal() as session:
             async with session.begin():
-                try:
-                    yield session
-                except Exception:
-                    await session.rollback()
-                    raise
+                yield session
 
     @staticmethod
     async def execute_raw_sql(sql: str, params: dict = None):
@@ -310,16 +321,27 @@ class DatabaseManager:
     @staticmethod
     async def get_database_stats() -> dict:
         """
-        Get database connection pool statistics
+        Get database connection pool statistics.
+
+        The async engine uses NullPool, which does not implement the QueuePool
+        statistics interface, so each metric is read defensively.
         """
         pool = async_engine.pool
-        return {
-            "pool_size": pool.size(),
-            "checked_in": pool.checkedin(),
-            "checked_out": pool.checkedout(),
-            "overflow": pool.overflow(),
-            "invalid": pool.invalid(),
-        }
+        stats = {}
+        for name, attr in (
+            ("pool_size", "size"),
+            ("checked_in", "checkedin"),
+            ("checked_out", "checkedout"),
+            ("overflow", "overflow"),
+            ("invalid", "invalid"),
+        ):
+            method = getattr(pool, attr, None)
+            try:
+                stats[name] = method() if callable(method) else None
+            except (NotImplementedError, AttributeError):
+                stats[name] = None
+        stats["pool_class"] = type(pool).__name__
+        return stats
 
     @staticmethod
     async def get_redis_stats() -> dict:

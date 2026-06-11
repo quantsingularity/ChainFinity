@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -21,11 +21,21 @@ class CorrelationPredictor:
     def __init__(self, sequence_length: Any = 30, n_features: Any = 10) -> None:
         self.sequence_length = sequence_length
         self.n_features = n_features
+        self.n_assets: Optional[int] = None
         self.scaler = MinMaxScaler(feature_range=(0, 1))
         self.model = self._build_model()
 
-    def _build_model(self) -> Any:
-        """Builds the LSTM model for correlation prediction."""
+    def _build_model(self, output_size: Optional[int] = None) -> Any:
+        """Builds the LSTM model for correlation prediction.
+
+        Parameters
+        ----------
+        output_size : size of the flattened correlation matrix
+                      (n_assets * n_assets). Defaults to n_features ** 2 for
+                      backwards compatibility when called before data is seen.
+        """
+        if output_size is None:
+            output_size = self.n_features * self.n_features
         model = tf.keras.Sequential(
             [
                 tf.keras.layers.LSTM(
@@ -37,9 +47,7 @@ class CorrelationPredictor:
                 tf.keras.layers.LSTM(64),
                 tf.keras.layers.Dropout(0.3),
                 tf.keras.layers.Dense(32, activation="relu"),
-                tf.keras.layers.Dense(
-                    self.n_features * self.n_features, activation="tanh"
-                ),
+                tf.keras.layers.Dense(output_size, activation="tanh"),
             ]
         )
         model.compile(optimizer="adam", loss="mse")
@@ -51,11 +59,17 @@ class CorrelationPredictor:
         log_returns = np.log(prices / prices.shift(1))
         return log_returns.rolling(window=window).std() * np.sqrt(252)
 
-    def create_sequences(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
+    def create_sequences(
+        self, df: pd.DataFrame, target_window: int = 7
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Creates time sequences for LSTM training.
-        Input (X): sequence_length days of price and volatility data.
-        Target (y): Flattened correlation matrix for the day immediately following the sequence.
+        Input (X): `sequence_length` days of price and volatility data ending at day i.
+        Target (y): Flattened correlation matrix of asset returns over the
+                    FORWARD window [i, i + target_window). Using a forward
+                    window (instead of the same lookback window as X) makes
+                    this a genuine forecasting task rather than teaching the
+                    model to recompute the correlation it can already observe.
         """
         data = df.copy()
         asset_cols = [col for col in data.columns if col.startswith("asset_")]
@@ -68,15 +82,18 @@ class CorrelationPredictor:
         data.dropna(inplace=True)
         features = data[[col for col in data.columns if col not in asset_cols]]
         self.n_features = features.shape[1]
+        self.n_assets = len(asset_cols)
         scaled_features = self.scaler.fit_transform(features)
         X, y = ([], [])
-        for i in range(self.sequence_length, len(data)):
-            X.append(scaled_features[i - self.sequence_length : i])
-            window_prices = data[asset_cols].iloc[i - self.sequence_length : i]
-            window_returns = window_prices.pct_change().dropna()
-            if window_returns.empty:
+        for i in range(self.sequence_length, len(data) - target_window):
+            future_prices = data[asset_cols].iloc[i : i + target_window]
+            future_returns = future_prices.pct_change().dropna()
+            if len(future_returns) < 2:
                 continue
-            corr_matrix = window_returns.corr().values
+            corr_matrix = future_returns.corr().fillna(0.0).values
+            np.fill_diagonal(corr_matrix, 1.0)
+            # Append X and y together so they always stay aligned.
+            X.append(scaled_features[i - self.sequence_length : i])
             y.append(corr_matrix.flatten())
         return (np.array(X), np.array(y))
 
@@ -98,9 +115,9 @@ class CorrelationPredictor:
             df = pd.DataFrame(
                 {
                     "Date": dates,
-                    "asset_btc": np.cumsum(np.random.randn(200) * 0.01 + 100),
-                    "asset_eth": np.cumsum(np.random.randn(200) * 0.01 + 50),
-                    "asset_sol": np.cumsum(np.random.randn(200) * 0.01 + 20),
+                    "asset_btc": 100 + np.cumsum(np.random.randn(200)),
+                    "asset_eth": 50 + np.cumsum(np.random.randn(200) * 0.5),
+                    "asset_sol": 20 + np.cumsum(np.random.randn(200) * 0.2),
                 }
             ).set_index("Date")
         if len(df) < self.sequence_length + 1:
@@ -121,7 +138,7 @@ class CorrelationPredictor:
             logger.warning(
                 f"Rebuilding model to match target output size: {output_size}"
             )
-            self.model = self._build_model()
+            self.model = self._build_model(output_size=output_size)
         logger.info(f"Training model with X shape: {X.shape}, y shape: {y.shape}")
         self.model.fit(
             X,
@@ -173,9 +190,9 @@ if __name__ == "__main__":
     df_pred = pd.DataFrame(
         {
             "Date": dates,
-            "asset_btc": np.cumsum(np.random.randn(30) * 0.01 + 100),
-            "asset_eth": np.cumsum(np.random.randn(30) * 0.01 + 50),
-            "asset_sol": np.cumsum(np.random.randn(30) * 0.01 + 20),
+            "asset_btc": 100 + np.cumsum(np.random.randn(30)),
+            "asset_eth": 50 + np.cumsum(np.random.randn(30) * 0.5),
+            "asset_sol": 20 + np.cumsum(np.random.randn(30) * 0.2),
         }
     ).set_index("Date")
     try:

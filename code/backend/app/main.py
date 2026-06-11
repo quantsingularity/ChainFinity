@@ -11,6 +11,17 @@ import uvicorn
 from app.api.v1.router import api_router
 from config.database import close_database, init_database
 from config.settings import settings
+from exceptions.base_exceptions import (
+    AuthenticationException,
+    AuthorizationException,
+    BaseChainFinityException,
+    ConflictException,
+    ErrorCategory,
+    InsufficientResourcesException,
+    RateLimitException,
+    ResourceNotFoundException,
+    ValidationException,
+)
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -139,6 +150,55 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
+def _status_for_domain_exception(exc: BaseChainFinityException) -> int:
+    """Map structured domain exceptions to HTTP status codes.
+
+    Previously these exceptions fell through to the generic Exception handler
+    and every business error (not found, validation, limits, ...) surfaced as
+    an opaque 500.
+    """
+    if isinstance(exc, ResourceNotFoundException):
+        return status.HTTP_404_NOT_FOUND
+    if isinstance(exc, AuthenticationException):
+        return status.HTTP_401_UNAUTHORIZED
+    if isinstance(exc, AuthorizationException):
+        return status.HTTP_403_FORBIDDEN
+    if isinstance(exc, ConflictException):
+        return status.HTTP_409_CONFLICT
+    if isinstance(exc, RateLimitException):
+        return status.HTTP_429_TOO_MANY_REQUESTS
+    if isinstance(exc, (ValidationException, InsufficientResourcesException)):
+        return status.HTTP_400_BAD_REQUEST
+    category_map = {
+        ErrorCategory.VALIDATION: status.HTTP_400_BAD_REQUEST,
+        ErrorCategory.AUTHENTICATION: status.HTTP_401_UNAUTHORIZED,
+        ErrorCategory.AUTHORIZATION: status.HTTP_403_FORBIDDEN,
+        ErrorCategory.BUSINESS_LOGIC: status.HTTP_400_BAD_REQUEST,
+        ErrorCategory.COMPLIANCE: status.HTTP_403_FORBIDDEN,
+    }
+    return category_map.get(exc.category, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@app.exception_handler(BaseChainFinityException)
+async def chainfinity_exception_handler(
+    request: Request, exc: BaseChainFinityException
+):
+    """Translate structured domain exceptions into HTTP responses"""
+    status_code = _status_for_domain_exception(exc)
+    if status_code >= 500:
+        logger.error(f"Domain exception: {exc}", exc_info=True)
+    else:
+        logger.info(f"Domain exception: {exc}")
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "success": False,
+            "error": exc.user_message,
+            "code": exc.error_code,
+        },
+    )
+
+
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle general exceptions"""
@@ -190,7 +250,7 @@ async def health_check() -> dict:
 
     return {
         "status": overall_status,
-        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": settings.app.APP_VERSION,
         "services": services,
         "uptime_seconds": int(_time.time() - _app_start_time),

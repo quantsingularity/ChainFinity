@@ -72,6 +72,7 @@ contract AssetVault is ReentrancyGuard, AccessControl, Pausable, Initializable {
         address indexed approver
     );
     event WithdrawalExecuted(uint256 indexed requestId);
+    event WithdrawalCancelled(uint256 indexed requestId);
     event AssetFrozen(address indexed token, bool frozen);
     event UserAssetFrozen(
         address indexed user,
@@ -201,7 +202,7 @@ contract AssetVault is ReentrancyGuard, AccessControl, Pausable, Initializable {
         if (amount >= largeTransferThreshold) {
             _requestWithdrawal(token, amount);
         } else {
-            _executeWithdrawal(msg.sender, token, amount);
+            _executeWithdrawal(msg.sender, token, amount, false);
         }
     }
 
@@ -221,7 +222,33 @@ contract AssetVault is ReentrancyGuard, AccessControl, Pausable, Initializable {
         request.approvals = 0;
         request.executed = false;
 
+        // Escrow the funds immediately. Without this, a user could queue a
+        // large withdrawal and then drain the same balance through small
+        // direct withdrawals before operators approve the request.
+        userTokenBalances[msg.sender][token] -= amount;
+
         emit WithdrawalRequested(requestId, msg.sender, token, amount);
+    }
+
+    /**
+     * @dev Cancel a pending withdrawal request and refund the escrowed
+     *      balance. Callable by the requesting user or an operator.
+     * @param requestId ID of the withdrawal request
+     */
+    function cancelWithdrawal(uint256 requestId) external nonReentrant {
+        WithdrawalRequest storage request = withdrawalRequests[requestId];
+
+        require(request.user != address(0), "Request does not exist");
+        require(!request.executed, "Request already executed");
+        require(
+            msg.sender == request.user || hasRole(OPERATOR_ROLE, msg.sender),
+            "Not authorized to cancel"
+        );
+
+        request.executed = true; // mark consumed so it cannot be re-approved
+        userTokenBalances[request.user][request.token] += request.amount;
+
+        emit WithdrawalCancelled(requestId);
     }
 
     /**
@@ -230,22 +257,33 @@ contract AssetVault is ReentrancyGuard, AccessControl, Pausable, Initializable {
      */
     function approveWithdrawal(
         uint256 requestId
-    ) external onlyRole(OPERATOR_ROLE) {
+    ) external nonReentrant onlyRole(OPERATOR_ROLE) {
         WithdrawalRequest storage request = withdrawalRequests[requestId];
 
         require(!request.executed, "Request already executed");
         require(request.user != address(0), "Request does not exist");
         require(!request.hasApproved[msg.sender], "Already approved");
+        require(!frozenTokens[request.token], "Token is frozen");
+        require(
+            !frozenUserAssets[request.user][request.token],
+            "User assets are frozen"
+        );
 
         request.hasApproved[msg.sender] = true;
         request.approvals += 1;
 
         emit WithdrawalApproved(requestId, msg.sender);
 
-        // Execute if threshold met
+        // Execute if threshold met. State is finalized BEFORE the external
+        // token transfers (checks-effects-interactions).
         if (request.approvals >= requiredApprovals) {
-            _executeWithdrawal(request.user, request.token, request.amount);
             request.executed = true;
+            _executeWithdrawal(
+                request.user,
+                request.token,
+                request.amount,
+                true // balance already escrowed at request time
+            );
             emit WithdrawalExecuted(requestId);
         }
     }
@@ -259,14 +297,18 @@ contract AssetVault is ReentrancyGuard, AccessControl, Pausable, Initializable {
     function _executeWithdrawal(
         address user,
         address token,
-        uint256 amount
+        uint256 amount,
+        bool alreadyEscrowed
     ) internal {
         // Calculate and deduct fee
         uint256 fee = (amount * withdrawFeeRate) / 10000;
         uint256 netAmount = amount - fee;
 
-        // BUG FIX: Deduct the gross amount from the user's balance
-        userTokenBalances[user][token] -= amount;
+        // Deduct the gross amount from the user's balance unless it was
+        // already escrowed when the multi-sig request was created.
+        if (!alreadyEscrowed) {
+            userTokenBalances[user][token] -= amount;
+        }
 
         // Transfer tokens
         require(IERC20(token).transfer(user, netAmount), "Transfer failed");
@@ -325,7 +367,7 @@ contract AssetVault is ReentrancyGuard, AccessControl, Pausable, Initializable {
             if (amounts[i] >= largeTransferThreshold) {
                 _requestWithdrawal(tokens[i], amounts[i]);
             } else {
-                _executeWithdrawal(msg.sender, tokens[i], amounts[i]);
+                _executeWithdrawal(msg.sender, tokens[i], amounts[i], false);
             }
         }
     }
@@ -396,6 +438,7 @@ contract AssetVault is ReentrancyGuard, AccessControl, Pausable, Initializable {
         uint256 newThreshold,
         uint256 newRequiredApprovals
     ) external onlyRole(ADMIN_ROLE) {
+        require(newRequiredApprovals > 0, "Approvals must be at least 1");
         largeTransferThreshold = newThreshold;
         requiredApprovals = newRequiredApprovals;
 

@@ -20,6 +20,7 @@ from sqlalchemy import (
     String,
     Text,
 )
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
 from .base import AuditMixin, BaseModel, TimestampMixin
@@ -104,6 +105,16 @@ class BlockchainNetwork(BaseModel, TimestampMixin, AuditMixin):
         Enum(NetworkStatus), default=NetworkStatus.ACTIVE, nullable=False, index=True
     )
     is_supported = Column(Boolean, default=True, nullable=False)
+
+    @hybrid_property
+    def is_active(self):
+        """Whether the network is in ACTIVE status (usable in queries)."""
+        return self.status == NetworkStatus.ACTIVE
+
+    @is_active.expression
+    def is_active(cls):
+        return cls.status == NetworkStatus.ACTIVE
+
     last_block_number = Column(Integer, nullable=True)
     last_block_timestamp = Column(DateTime, nullable=True)
 

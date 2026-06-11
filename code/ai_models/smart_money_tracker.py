@@ -147,11 +147,14 @@ def _infer_cluster_label(centroid: np.ndarray, feature_names: List[str]) -> str:
 
     if flash > 0.5:
         return "arbitrageur"
-    if tx_count > 2.0 and win_rate < 0.4:  # standardised
+    # tx_count is a raw 30-day transaction count; very high frequency with a
+    # poor win rate is characteristic of unsophisticated bots.
+    if tx_count > 500 and win_rate < 0.4:
         return "bot"
-    if vol > 1.5:
+    # log1p(volume) > 16 corresponds to roughly $9M of 30-day volume.
+    if vol > 16:
         return "whale"
-    if win_rate > 0.5 and bridge > 0.3:
+    if win_rate > 0.55 and bridge > 0.3:
         return "smart_trader"
     return "retail"
 
@@ -202,11 +205,17 @@ class SmartMoneyTracker:
         )
         self.kmeans.fit(X)
 
-        # Label each cluster
+        # Label each cluster using centroids mapped back to the ORIGINAL
+        # feature scale; the heuristic thresholds in _infer_cluster_label are
+        # expressed in raw units (win rates in [0, 1], counts, log-volumes),
+        # so comparing them against standardised centroids would be wrong.
         for cid in range(self.n_clusters):
-            centroid = self.kmeans.cluster_centers_[cid]
+            centroid_scaled = self.kmeans.cluster_centers_[cid]
+            centroid_raw = self.scaler.inverse_transform(
+                centroid_scaled.reshape(1, -1)
+            )[0]
             self._cluster_labels[cid] = _infer_cluster_label(
-                centroid, self._feature_names
+                centroid_raw, self._feature_names
             )
 
         logger.info(

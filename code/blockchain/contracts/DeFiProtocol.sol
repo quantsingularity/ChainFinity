@@ -155,11 +155,16 @@ contract InstitutionalDeFiProtocol is ReentrancyGuard, Pausable, AccessControl {
         uint256 amount
     );
 
+    event TokenAuthorized(address indexed token, bool authorized);
+    event KYCStatusUpdated(uint256 indexed poolId, address indexed user, bool verified);
+    event BlacklistUpdated(address indexed user, bool blacklisted);
+
     // State variables
     mapping(uint256 => PoolInfo) public pools;
     mapping(uint256 => LiquidityPool) public liquidityPools;
     mapping(uint256 => RiskParameters) public riskParameters;
     mapping(address => bool) public authorizedTokens;
+    mapping(address => bool) public blacklisted;
     mapping(address => mapping(address => uint256)) public allowedSlippage;
 
     uint256 public poolCount;
@@ -272,6 +277,8 @@ contract InstitutionalDeFiProtocol is ReentrancyGuard, Pausable, AccessControl {
         pool.isActive = true;
         pool.requiresKYC = requiresKYC;
         pool.lastUpdateTime = block.timestamp;
+        require(rewardsDuration > 0, "Invalid rewards duration");
+        pool.periodFinish = block.timestamp + rewardsDuration;
 
         // Set default risk parameters
         riskParameters[poolId] = RiskParameters({
@@ -309,6 +316,10 @@ contract InstitutionalDeFiProtocol is ReentrancyGuard, Pausable, AccessControl {
         riskCheck(poolId, amount)
     {
         require(amount > 0, "Amount must be greater than 0");
+        require(
+            _performComplianceCheck(msg.sender, address(0), amount, "stake"),
+            "Address is blacklisted"
+        );
 
         PoolInfo storage pool = pools[poolId];
         UserInfo storage user = pool.users[msg.sender];
@@ -599,38 +610,68 @@ contract InstitutionalDeFiProtocol is ReentrancyGuard, Pausable, AccessControl {
     }
 
     /**
-     * @dev Internal function to calculate rewards
+     * @dev Last timestamp at which rewards are applicable for a pool.
      */
-    function _calculateReward(
-        uint256 poolId,
-        address user
-    ) internal view returns (uint256) {
+    function lastTimeRewardApplicable(
+        uint256 poolId
+    ) public view returns (uint256) {
         PoolInfo storage pool = pools[poolId];
-        UserInfo storage userInfo = pool.users[user];
-
-        if (pool.totalStaked == 0 || userInfo.stakedAmount == 0) {
-            return 0;
-        }
-
-        uint256 timeElapsed = block.timestamp.sub(pool.lastUpdateTime);
-        uint256 reward = timeElapsed
-            .mul(pool.rewardRate)
-            .mul(userInfo.stakedAmount)
-            .div(pool.totalStaked);
-
-        return reward;
+        return Math.min(block.timestamp, pool.periodFinish);
     }
 
     /**
-     * @dev Internal function to update rewards
+     * @dev Accumulated reward per staked token (scaled by PRECISION).
+     *
+     * Synthetix StakingRewards accounting: the global accumulator only ever
+     * advances, so one user's interaction can never erase another user's
+     * pending accrual (the previous implementation reset the shared clock on
+     * every stake/withdraw/claim, silently destroying rewards).
+     */
+    function rewardPerToken(uint256 poolId) public view returns (uint256) {
+        PoolInfo storage pool = pools[poolId];
+        if (pool.totalStaked == 0) {
+            return pool.rewardPerTokenStored;
+        }
+        uint256 timeElapsed = lastTimeRewardApplicable(poolId).sub(
+            pool.lastUpdateTime
+        );
+        return
+            pool.rewardPerTokenStored.add(
+                timeElapsed.mul(pool.rewardRate).mul(PRECISION).div(
+                    pool.totalStaked
+                )
+            );
+    }
+
+    /**
+     * @dev Total rewards earned and not yet claimed by `user` in `poolId`.
+     */
+    function earned(uint256 poolId, address user) public view returns (uint256) {
+        PoolInfo storage pool = pools[poolId];
+        UserInfo storage userInfo = pool.users[user];
+        return
+            userInfo
+                .stakedAmount
+                .mul(rewardPerToken(poolId).sub(userInfo.rewardPerTokenPaid))
+                .div(PRECISION)
+                .add(userInfo.rewards);
+    }
+
+    /**
+     * @dev Internal function to settle reward accounting before any change
+     *      to a user's stake.
      */
     function _updateReward(uint256 poolId, address user) internal {
         PoolInfo storage pool = pools[poolId];
-        UserInfo storage userInfo = pool.users[user];
 
-        uint256 reward = _calculateReward(poolId, user);
-        userInfo.rewards = userInfo.rewards.add(reward);
-        pool.lastUpdateTime = block.timestamp;
+        pool.rewardPerTokenStored = rewardPerToken(poolId);
+        pool.lastUpdateTime = lastTimeRewardApplicable(poolId);
+
+        if (user != address(0)) {
+            UserInfo storage userInfo = pool.users[user];
+            userInfo.rewards = earned(poolId, user);
+            userInfo.rewardPerTokenPaid = pool.rewardPerTokenStored;
+        }
     }
 
     /**
@@ -718,29 +759,34 @@ contract InstitutionalDeFiProtocol is ReentrancyGuard, Pausable, AccessControl {
         uint256 amount,
         string memory operation
     ) internal view returns (bool) {
-        // Placeholder for external compliance oracle call or on-chain checks
-        // For now, it simply passes if the user is not blacklisted
-        return !hasRole(EMERGENCY_ROLE, user); // Simple check: Emergency role is used for blacklisting
+        // Dedicated blacklist mapping. The previous implementation granted
+        // blacklisted users EMERGENCY_ROLE, which would have handed every
+        // blacklisted address the power to pause the protocol.
+        return !blacklisted[user];
     }
 
     /**
-     * @dev Internal function to set KYC verified status
+     * @dev Set per-pool KYC verification status for a user.
      */
-    function _setKYCVerified(address user, bool verified) internal {
-        // Placeholder for setting KYC status
-        pools[0].users[user].isKYCVerified = verified; // Assuming pool 0 is the default
+    function setKYCStatus(
+        uint256 poolId,
+        address user,
+        bool verified
+    ) external onlyRole(OPERATOR_ROLE) {
+        require(poolId < poolCount, "Invalid pool ID");
+        pools[poolId].users[user].isKYCVerified = verified;
+        emit KYCStatusUpdated(poolId, user, verified);
     }
 
     /**
-     * @dev Internal function to set blacklisted status
+     * @dev Set blacklist status for a user.
      */
-    function _setBlacklisted(address user, bool blacklisted) internal {
-        // Placeholder for setting blacklisted status
-        if (blacklisted) {
-            _grantRole(EMERGENCY_ROLE, user);
-        } else {
-            _revokeRole(EMERGENCY_ROLE, user);
-        }
+    function setBlacklisted(
+        address user,
+        bool isBlacklisted
+    ) external onlyRole(RISK_MANAGER_ROLE) {
+        blacklisted[user] = isBlacklisted;
+        emit BlacklistUpdated(user, isBlacklisted);
     }
 
     /**
@@ -764,6 +810,20 @@ contract InstitutionalDeFiProtocol is ReentrancyGuard, Pausable, AccessControl {
     // --- Admin Functions ---
 
     /**
+     * @dev Authorize or revoke a token for use in pools. Without this setter
+     *      the authorizedTokens requirement in createPool could never be
+     *      satisfied.
+     */
+    function setTokenAuthorization(
+        address token,
+        bool authorized
+    ) external onlyRole(ADMIN_ROLE) {
+        require(token != address(0), "Invalid token");
+        authorizedTokens[token] = authorized;
+        emit TokenAuthorized(token, authorized);
+    }
+
+    /**
      * @dev Create a new liquidity pool
      */
     function createLiquidityPool(
@@ -779,17 +839,17 @@ contract InstitutionalDeFiProtocol is ReentrancyGuard, Pausable, AccessControl {
         require(feeRate <= MAX_FEE, "Fee rate too high");
 
         poolId = liquidityPoolCount++;
-        liquidityPools[poolId] = LiquidityPool({
-            token0: IERC20(tokenA),
-            token1: IERC20(tokenB),
-            reserve0: 0,
-            reserve1: 0,
-            totalLiquidity: 0,
-            feeRate: feeRate,
-            lastUpdateTime: block.timestamp,
-            isActive: true,
-            liquidityProviders: new mapping(address => uint256)
-        });
+        // Structs containing mappings cannot be assigned with a struct
+        // literal; initialise field by field through a storage pointer.
+        LiquidityPool storage pool = liquidityPools[poolId];
+        pool.token0 = IERC20(tokenA);
+        pool.token1 = IERC20(tokenB);
+        pool.reserve0 = 0;
+        pool.reserve1 = 0;
+        pool.totalLiquidity = 0;
+        pool.feeRate = feeRate;
+        pool.lastUpdateTime = block.timestamp;
+        pool.isActive = true;
     }
 
     /**

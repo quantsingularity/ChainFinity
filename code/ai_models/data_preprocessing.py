@@ -25,7 +25,11 @@ ScalerType = Union[MinMaxScaler, StandardScaler, RobustScaler]
 
 
 def validate_ohlcv(df: pd.DataFrame, strict: bool = False) -> pd.DataFrame:
-    """Validate and coerce an OHLCV DataFrame."""
+    """Validate and coerce an OHLCV DataFrame.
+
+    Operates on a copy so the caller's DataFrame is never mutated.
+    """
+    df = df.copy()
     if "close" not in df.columns:
         raise ValueError("DataFrame must contain a 'close' column.")
     if strict:

@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -178,7 +179,14 @@ contract InstitutionalGovernance is ReentrancyGuard, Pausable, AccessControl {
 
     mapping(uint256 => Proposal) public proposals;
     mapping(address => mapping(address => Delegation)) public delegations;
+    // Voting power RECEIVED through delegation.
     mapping(address => uint256) public votingPower;
+    // Voting power the delegator has DELEGATED OUT (so it is not double
+    // counted as both their own balance and the delegate's received power).
+    mapping(address => uint256) public delegatedOut;
+    // The single active delegate per delegator (replaces the broken
+    // address(0)..address(9) scan in revokeDelegation).
+    mapping(address => address) public activeDelegate;
     mapping(address => bool) public authorizedProposers;
     mapping(ProposalType => GovernanceParams) public typeParams;
 
@@ -207,18 +215,19 @@ contract InstitutionalGovernance is ReentrancyGuard, Pausable, AccessControl {
     }
 
     modifier onlyActiveProposal(uint256 proposalId) {
+        Proposal storage p = proposals[proposalId];
         require(
-            proposals[proposalId].status == ProposalStatus.Active,
-            "Proposal not active"
-        );
-        require(
-            block.timestamp >= proposals[proposalId].startTime,
+            block.timestamp >= p.startTime,
             "Voting not started"
         );
-        require(
-            block.timestamp <= proposals[proposalId].endTime,
-            "Voting ended"
-        );
+        require(block.timestamp <= p.endTime, "Voting ended");
+        // Transition Pending -> Active on first interaction inside the
+        // voting window. Previously no code ever set Active, so voting was
+        // permanently impossible.
+        if (p.status == ProposalStatus.Pending) {
+            p.status = ProposalStatus.Active;
+        }
+        require(p.status == ProposalStatus.Active, "Proposal not active");
         _;
     }
 
@@ -303,29 +312,30 @@ contract InstitutionalGovernance is ReentrancyGuard, Pausable, AccessControl {
         uint256 startTime = block.timestamp.add(params.votingDelay);
         uint256 endTime = startTime.add(params.votingPeriod);
 
-        proposals[proposalId] = Proposal({
-            id: proposalId,
-            proposer: msg.sender,
-            proposalType: proposalType,
-            votingMechanism: votingMechanism,
-            title: title,
-            description: description,
-            descriptionHash: keccak256(abi.encodePacked(description)),
-            targets: targets,
-            values: values,
-            calldatas: calldatas,
-            startTime: startTime,
-            endTime: endTime,
-            executionTime: 0,
-            forVotes: 0,
-            againstVotes: 0,
-            abstainVotes: 0,
-            totalVotingPower: _getGovernanceTokenTotalSupply(),
-            quorumRequired: _calculateQuorum(params),
-            approvalThreshold: params.approvalThreshold,
-            status: ProposalStatus.Pending,
-            requiresCompliance: requiresCompliance
-        });
+        // A struct containing mappings cannot be assigned via a struct
+        // literal; populate it field-by-field through a storage reference.
+        Proposal storage proposal = proposals[proposalId];
+        proposal.id = proposalId;
+        proposal.proposer = msg.sender;
+        proposal.proposalType = proposalType;
+        proposal.votingMechanism = votingMechanism;
+        proposal.title = title;
+        proposal.description = description;
+        proposal.descriptionHash = keccak256(abi.encodePacked(description));
+        proposal.targets = targets;
+        proposal.values = values;
+        proposal.calldatas = calldatas;
+        proposal.startTime = startTime;
+        proposal.endTime = endTime;
+        proposal.executionTime = 0;
+        proposal.forVotes = 0;
+        proposal.againstVotes = 0;
+        proposal.abstainVotes = 0;
+        proposal.totalVotingPower = _getGovernanceTokenTotalSupply();
+        proposal.quorumRequired = _calculateQuorum(params);
+        proposal.approvalThreshold = params.approvalThreshold;
+        proposal.status = ProposalStatus.Pending;
+        proposal.requiresCompliance = requiresCompliance;
 
         emit ProposalCreated(
             proposalId,
@@ -389,13 +399,23 @@ contract InstitutionalGovernance is ReentrancyGuard, Pausable, AccessControl {
         require(delegate != address(0), "Invalid delegate address");
         require(delegate != msg.sender, "Cannot delegate to self");
 
-        uint256 amount = _getVotingPower(msg.sender);
-        require(amount > 0, "No voting power to delegate");
+        // Only the caller's own (non-delegated) balance can be delegated.
+        uint256 balance = governanceToken.balanceOf(msg.sender);
+        uint256 available = balance.sub(delegatedOut[msg.sender]);
+        require(available > 0, "No voting power to delegate");
 
-        // Revoke existing delegation if any
-        if (delegations[msg.sender][delegate].isActive) {
-            _revokeDelegation(msg.sender, delegate);
+        // A delegator may only have one active delegate at a time; revoke the
+        // previous one first so accounting stays consistent.
+        address previous = activeDelegate[msg.sender];
+        if (previous != address(0) && delegations[msg.sender][previous].isActive) {
+            uint256 prevAmount = delegations[msg.sender][previous].amount;
+            _revokeDelegation(msg.sender, previous);
+            votingPower[previous] = votingPower[previous].sub(prevAmount);
+            delegatedOut[msg.sender] = delegatedOut[msg.sender].sub(prevAmount);
+            available = balance.sub(delegatedOut[msg.sender]);
         }
+
+        uint256 amount = available;
 
         delegations[msg.sender][delegate] = Delegation({
             delegate: delegate,
@@ -403,9 +423,12 @@ contract InstitutionalGovernance is ReentrancyGuard, Pausable, AccessControl {
             timestamp: block.timestamp,
             isActive: true
         });
+        activeDelegate[msg.sender] = delegate;
 
+        // Credit the delegate's RECEIVED power and record the delegator's
+        // delegated-out amount (no underflow: delegatedOut starts at 0).
         votingPower[delegate] = votingPower[delegate].add(amount);
-        votingPower[msg.sender] = votingPower[msg.sender].sub(amount);
+        delegatedOut[msg.sender] = delegatedOut[msg.sender].add(amount);
 
         emit DelegationCreated(msg.sender, delegate, amount);
     }
@@ -414,30 +437,22 @@ contract InstitutionalGovernance is ReentrancyGuard, Pausable, AccessControl {
      * @dev Revoke delegation
      */
     function revokeDelegation() external nonReentrant {
-        // Find active delegation
-        address delegate = address(0);
-        uint256 amount = 0;
-
-        for (uint256 i = 0; i < 10; i++) {
-            // Max 10 delegations to check (simplification)
-            // This is a simplification. A proper implementation would require a more complex structure
-            // to iterate over all delegations from msg.sender.
-            // For this exercise, we assume a single active delegation per user for simplicity.
-            // A real-world contract would use a mapping of delegator => activeDelegate.
-            // Since the original code didn't provide a structure for this, we'll assume a single active delegation.
-            if (delegations[msg.sender][address(i)].isActive) {
-                delegate = delegations[msg.sender][address(i)].delegate;
-                amount = delegations[msg.sender][address(i)].amount;
-                break;
-            }
-        }
-
+        address delegate = activeDelegate[msg.sender];
         require(delegate != address(0), "No active delegation to revoke");
+        require(
+            delegations[msg.sender][delegate].isActive,
+            "No active delegation to revoke"
+        );
+
+        uint256 amount = delegations[msg.sender][delegate].amount;
 
         _revokeDelegation(msg.sender, delegate);
+        activeDelegate[msg.sender] = address(0);
 
-        votingPower[msg.sender] = votingPower[msg.sender].add(amount);
+        // Return the delegated power: reduce the delegate's received power
+        // and clear the delegator's delegated-out balance.
         votingPower[delegate] = votingPower[delegate].sub(amount);
+        delegatedOut[msg.sender] = delegatedOut[msg.sender].sub(amount);
 
         emit DelegationRevoked(msg.sender, delegate);
     }
@@ -512,6 +527,28 @@ contract InstitutionalGovernance is ReentrancyGuard, Pausable, AccessControl {
     }
 
     /**
+     * @dev Finalize a proposal once its voting period has ended. Callable by
+     *      anyone; without this a proposal that received its last vote before
+     *      endTime could remain stuck in Active forever.
+     */
+    function finalizeProposal(
+        uint256 proposalId
+    ) external validProposal(proposalId) {
+        Proposal storage proposal = proposals[proposalId];
+        // Lazily activate so a proposal that never received a vote can still
+        // be resolved (to Defeated) after its window closes.
+        if (
+            proposal.status == ProposalStatus.Pending &&
+            block.timestamp >= proposal.startTime
+        ) {
+            proposal.status = ProposalStatus.Active;
+        }
+        require(proposal.status == ProposalStatus.Active, "Not active");
+        require(block.timestamp > proposal.endTime, "Voting not ended");
+        _checkProposalStatus(proposalId);
+    }
+
+    /**
      * @dev Internal function to check and update proposal status
      */
     function _checkProposalStatus(uint256 proposalId) internal {
@@ -523,9 +560,10 @@ contract InstitutionalGovernance is ReentrancyGuard, Pausable, AccessControl {
         );
 
         if (block.timestamp > proposal.endTime) {
-            if (totalVotes >= proposal.quorumRequired) {
+            uint256 decisiveVotes = proposal.forVotes.add(proposal.againstVotes);
+            if (totalVotes >= proposal.quorumRequired && decisiveVotes > 0) {
                 uint256 approvalPercentage = proposal.forVotes.mul(100).div(
-                    proposal.forVotes.add(proposal.againstVotes)
+                    decisiveVotes
                 );
                 if (approvalPercentage >= proposal.approvalThreshold) {
                     proposal.status = ProposalStatus.Succeeded;
@@ -565,8 +603,9 @@ contract InstitutionalGovernance is ReentrancyGuard, Pausable, AccessControl {
      * @dev Internal function to get voting power
      */
     function _getVotingPower(address user) internal view returns (uint256) {
-        // Simple voting power is the user's token balance plus any delegated power
-        return governanceToken.balanceOf(user).add(votingPower[user]);
+        // Own (non-delegated-out) balance plus power received via delegation.
+        uint256 own = governanceToken.balanceOf(user).sub(delegatedOut[user]);
+        return own.add(votingPower[user]);
     }
 
     /**
@@ -583,7 +622,7 @@ contract InstitutionalGovernance is ReentrancyGuard, Pausable, AccessControl {
             return power;
         } else if (mechanism == VotingMechanism.QuadraticVoting) {
             // Simplified quadratic voting: square root of power
-            return power.sqrt();
+            return Math.sqrt(power);
         } else if (mechanism == VotingMechanism.DelegatedVoting) {
             // Delegated voting is handled by _getVotingPower
             return power;

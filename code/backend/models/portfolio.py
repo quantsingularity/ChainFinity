@@ -106,6 +106,10 @@ class Portfolio(BaseModel, TimestampMixin, AuditMixin):
     target_allocations = Column(JSON, nullable=True)  # Target allocation percentages
 
     # Portfolio Metrics
+    # Persisted cash balance. Previously this was kept only in the instance
+    # __dict__ via an init-event shim, so any cash deposited into a portfolio
+    # vanished as soon as the object was reloaded from the database.
+    cash_balance = Column(Numeric(20, 8), default=0, nullable=False)
     total_value_usd = Column(Numeric(20, 8), default=0, nullable=False)
     total_cost_basis = Column(Numeric(20, 8), default=0, nullable=False)
     unrealized_pnl = Column(Numeric(20, 8), default=0, nullable=False)
@@ -450,140 +454,20 @@ class PortfolioPerformance(BaseModel, TimestampMixin):
     )
 
 
-# ── Compatibility shims ────────────────────────────────────────────────────
-# These make the ORM models compatible with both old and new field names
-# used across services, schemas, and tests.
+# ── Column aliases ─────────────────────────────────────────────────────────
+# Services, schemas, and tests refer to both the canonical column names
+# (asset_symbol, total_value_usd, ...) and shorter aliases (symbol,
+# total_value, ...). SQLAlchemy synonyms make the aliases first-class mapped
+# attributes: they work in constructors, on instances, AND in query
+# expressions (e.g. PortfolioAsset.symbol == "BTC"), unlike the previous
+# monkeypatched plain properties.
 
-from sqlalchemy import event as _sa_event
+from sqlalchemy.orm import synonym
 
+Portfolio.total_value = synonym("total_value_usd")
 
-def _portfolio_init(target, args, kwargs):
-    """Alias total_value -> total_value_usd and cash_balance on Portfolio."""
-    if "total_value" in kwargs and "total_value_usd" not in kwargs:
-        kwargs["total_value_usd"] = kwargs.pop("total_value")
-    if "cash_balance" in kwargs:
-        # Store cash in extra_metadata for now; expose as property
-        cb = kwargs.pop("cash_balance")
-        target.__dict__["_cash_balance"] = cb
-
-
-def _asset_init(target, args, kwargs):
-    """Alias symbol -> asset_symbol, etc. on PortfolioAsset."""
-    if "symbol" in kwargs and "asset_symbol" not in kwargs:
-        kwargs["asset_symbol"] = kwargs.pop("symbol")
-    if "average_price" in kwargs and "average_cost" not in kwargs:
-        kwargs["average_cost"] = kwargs.pop("average_price")
-    if "current_value" in kwargs and "current_value_usd" not in kwargs:
-        kwargs["current_value_usd"] = kwargs.pop("current_value")
-    if "allocation_percentage" in kwargs:
-        kwargs.pop("allocation_percentage", None)  # ignore; not a column
-    if "last_updated" in kwargs:
-        kwargs.pop("last_updated", None)  # not a column on PortfolioAsset
-
-
-_sa_event.listen(Portfolio, "init", _portfolio_init)
-_sa_event.listen(PortfolioAsset, "init", _asset_init)
-
-
-# Property shims on Portfolio
-@property
-def _portfolio_total_value(self):
-    return self.total_value_usd
-
-
-@_portfolio_total_value.setter
-def _portfolio_total_value(self, v):
-    self.total_value_usd = v
-
-
-@property
-def _portfolio_cash_balance(self):
-    return getattr(self, "_cash_balance", Decimal("0"))
-
-
-@_portfolio_cash_balance.setter
-def _portfolio_cash_balance(self, v):
-    self._cash_balance = v
-
-
-Portfolio.total_value = _portfolio_total_value
-Portfolio.cash_balance = _portfolio_cash_balance
-
-
-# Property shims on PortfolioAsset
-@property
-def _asset_symbol(self):
-    return self.asset_symbol
-
-
-@_asset_symbol.setter
-def _asset_symbol(self, v):
-    self.asset_symbol = v
-
-
-@property
-def _asset_average_price(self):
-    return self.average_cost
-
-
-@_asset_average_price.setter
-def _asset_average_price(self, v):
-    self.average_cost = v
-
-
-@property
-def _asset_current_value(self):
-    return self.current_value_usd
-
-
-@_asset_current_value.setter
-def _asset_current_value(self, v):
-    self.current_value_usd = v
-
-
-@property
-def _asset_allocation_percentage(self):
-    return self.current_allocation
-
-
-@_asset_allocation_percentage.setter
-def _asset_allocation_percentage(self, v):
-    self.current_allocation = v
-
-
-@property
-def _asset_last_updated(self):
-    return self.last_price_update
-
-
-@_asset_last_updated.setter
-def _asset_last_updated(self, v):
-    self.last_price_update = v
-
-
-PortfolioAsset.symbol = _asset_symbol
-PortfolioAsset.average_price = _asset_average_price
-PortfolioAsset.current_value = _asset_current_value
-PortfolioAsset.allocation_percentage = _asset_allocation_percentage
-PortfolioAsset.last_updated = _asset_last_updated
-
-
-# Allow direct dict-based setting of assets for testing without ORM enforcement
-_orig_portfolio_setattr = (
-    Portfolio.__setattr__ if hasattr(Portfolio, "__setattr__") else None
-)
-
-
-def _portfolio_setattr(self, name, value):
-    if name == "assets" and isinstance(value, list):
-        # Bypass SQLAlchemy relationship instrumentation for test mocks
-        object.__setattr__(self, "__dict__", {**self.__dict__, name: value})
-    else:
-        object.__setattr__(self, name, value)
-
-
-# Only patch if assets is a relationship (which blocks Mock assignment)
-try:
-    Portfolio.__setattr__ = _portfolio_setattr
-except Exception:
-    pass
+PortfolioAsset.symbol = synonym("asset_symbol")
+PortfolioAsset.average_price = synonym("average_cost")
+PortfolioAsset.current_value = synonym("current_value_usd")
+PortfolioAsset.allocation_percentage = synonym("current_allocation")
+PortfolioAsset.last_updated = synonym("last_price_update")

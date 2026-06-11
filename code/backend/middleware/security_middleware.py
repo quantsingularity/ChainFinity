@@ -172,6 +172,19 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         if request.method in ["POST", "PUT", "PATCH"]:
             try:
                 body = await request.body()
+
+                # Reading the body here consumes the ASGI receive stream;
+                # without re-injecting it the downstream application would
+                # block waiting for a body that was already drained.
+                async def receive() -> dict:
+                    return {
+                        "type": "http.request",
+                        "body": body,
+                        "more_body": False,
+                    }
+
+                request._receive = receive
+
                 if body:
                     body_str = body.decode("utf-8", errors="ignore").lower()
                     for pattern in self.suspicious_patterns:

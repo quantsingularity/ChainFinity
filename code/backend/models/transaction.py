@@ -21,9 +21,9 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, synonym
 
-from .base import AuditMixin, BaseModel, TimestampMixin
+from .base import AuditMixin, BaseModel, SoftDeleteMixin, TimestampMixin
 
 
 class TransactionType(enum.Enum):
@@ -68,7 +68,7 @@ class RiskLevel(enum.Enum):
     CRITICAL = "critical"
 
 
-class Transaction(BaseModel, TimestampMixin, AuditMixin):
+class Transaction(BaseModel, TimestampMixin, SoftDeleteMixin, AuditMixin):
     """
     Transaction model with compliance and monitoring
     """
@@ -78,6 +78,11 @@ class Transaction(BaseModel, TimestampMixin, AuditMixin):
     # User Association
     user_id = Column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
+
+    # Portfolio Association (optional — a transaction may be wallet-level)
+    portfolio_id = Column(
+        UUID(as_uuid=True), ForeignKey("portfolios.id"), nullable=True, index=True
     )
 
     # Blockchain Information
@@ -111,6 +116,8 @@ class Transaction(BaseModel, TimestampMixin, AuditMixin):
 
     # Amount and Value
     amount = Column(Numeric(36, 18), nullable=True)  # Raw amount in smallest unit
+    quantity = Column(Numeric(36, 18), nullable=True)  # Asset units traded
+    price_per_unit = Column(Numeric(20, 8), nullable=True)  # USD price per unit
     amount_usd = Column(
         Numeric(20, 8), nullable=True
     )  # USD value at time of transaction
@@ -160,6 +167,12 @@ class Transaction(BaseModel, TimestampMixin, AuditMixin):
         Index("idx_tx_network_block", "network", "block_number"),
         Index("idx_tx_addresses", "from_address", "to_address"),
     )
+
+    # Aliases used by the API layer; synonyms work in constructors,
+    # instance access, and query expressions alike.
+    symbol = synonym("asset_symbol")
+    transaction_hash = synonym("tx_hash")
+    notes = synonym("description")
 
     def is_confirmed(self) -> bool:
         """Check if transaction is confirmed"""

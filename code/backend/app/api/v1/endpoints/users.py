@@ -22,6 +22,7 @@ from schemas.user import (
     UserRiskProfileUpdate,
     UserUpdate,
 )
+from services.compliance.kyc_service import KYCService
 from services.risk.risk_service import RiskService
 from services.user.user_service import UserService
 from sqlalchemy import select
@@ -65,7 +66,7 @@ async def get_current_user_profile(
             db, current_user.id, "user_profile_viewed", "user", str(user.id)
         )
 
-        return UserResponse.from_orm(user)
+        return UserResponse.model_validate(user)
 
     except Exception as e:
         logger.error(f"Error getting user profile: {e}")
@@ -94,10 +95,10 @@ async def update_current_user(
             "user_updated",
             "user",
             str(current_user.id),
-            new_values=user_update.dict(exclude_unset=True),
+            new_values=user_update.model_dump(mode="json", exclude_unset=True),
         )
 
-        return UserResponse.from_orm(updated_user)
+        return UserResponse.model_validate(updated_user)
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -126,7 +127,7 @@ async def get_user_profile(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User profile not found"
             )
 
-        return UserProfileResponse.from_orm(profile)
+        return UserProfileResponse.model_validate(profile)
 
     except Exception as e:
         logger.error(f"Error getting user profile: {e}")
@@ -157,10 +158,10 @@ async def update_user_profile(
             "user_profile_updated",
             "user_profile",
             str(updated_profile.id),
-            new_values=profile_update.dict(exclude_unset=True),
+            new_values=profile_update.model_dump(mode="json", exclude_unset=True),
         )
 
-        return UserProfileResponse.from_orm(updated_profile)
+        return UserProfileResponse.model_validate(updated_profile)
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -190,7 +191,7 @@ async def get_user_kyc(
                 detail="KYC information not found",
             )
 
-        return UserKYCResponse.from_orm(kyc)
+        return UserKYCResponse.model_validate(kyc)
 
     except Exception as e:
         logger.error(f"Error getting user KYC: {e}")
@@ -211,7 +212,10 @@ async def submit_kyc_verification(
     """
     try:
         kyc_service = KYCService(db)
-        kyc = await kyc_service.submit_kyc_verification(current_user.id, kyc_data)
+        kyc = await kyc_service.submit_kyc_verification(
+            str(current_user.id),
+            kyc_data.model_dump(exclude_unset=True),
+        )
 
         await audit_log(
             db,
@@ -222,7 +226,7 @@ async def submit_kyc_verification(
             new_values={"status": kyc.status.value},
         )
 
-        return UserKYCResponse.from_orm(kyc)
+        return UserKYCResponse.model_validate(kyc)
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -251,7 +255,7 @@ async def get_user_risk_profile(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Risk profile not found"
             )
 
-        return UserRiskProfileResponse.from_orm(risk_profile)
+        return UserRiskProfileResponse.model_validate(risk_profile)
 
     except Exception as e:
         logger.error(f"Error getting user risk profile: {e}")
@@ -285,7 +289,7 @@ async def request_risk_assessment(
             new_values={"risk_level": risk_profile.risk_level.value},
         )
 
-        return UserRiskProfileResponse.from_orm(risk_profile)
+        return UserRiskProfileResponse.model_validate(risk_profile)
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

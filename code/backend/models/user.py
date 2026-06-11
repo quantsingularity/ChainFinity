@@ -25,6 +25,20 @@ from sqlalchemy.orm import relationship
 from .base import AuditMixin, BaseModel, EncryptedMixin, SoftDeleteMixin, TimestampMixin
 
 
+def _as_aware(dt):
+    """Treat naive datetimes (as loaded from non-tz DateTime columns) as UTC.
+
+    Columns declared as plain DateTime round-trip as naive datetimes even
+    though we always write UTC values; comparing them directly against
+    datetime.now(timezone.utc) raises TypeError at runtime.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 class UserStatus(enum.Enum):
     """User account status enumeration"""
 
@@ -74,6 +88,9 @@ class User(BaseModel, TimestampMixin, SoftDeleteMixin, AuditMixin):
     )
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     locked_until = Column(DateTime, nullable=True)
+
+    # Authorization
+    is_admin = Column(Boolean, default=False, nullable=False, index=True)
 
     # Multi-Factor Authentication
     mfa_enabled = Column(Boolean, default=False, nullable=False)
@@ -157,7 +174,8 @@ class User(BaseModel, TimestampMixin, SoftDeleteMixin, AuditMixin):
 
     def is_locked(self) -> bool:
         """Check if user account is locked"""
-        return self.locked_until and self.locked_until > datetime.now(timezone.utc)
+        locked_until = _as_aware(self.locked_until)
+        return bool(locked_until and locked_until > datetime.now(timezone.utc))
 
     def can_login(self) -> bool:
         """Check if user can login"""
@@ -321,13 +339,15 @@ class UserKYC(BaseModel, TimestampMixin, AuditMixin, EncryptedMixin):
             and self.document_verified
             and not self.sanctions_match
             and (
-                self.expires_at is None or self.expires_at > datetime.now(timezone.utc)
+                self.expires_at is None
+                or _as_aware(self.expires_at) > datetime.now(timezone.utc)
             )
         )
 
     def is_expired(self) -> bool:
         """Check if KYC verification is expired"""
-        return self.expires_at and self.expires_at <= datetime.now(timezone.utc)
+        expires_at = _as_aware(self.expires_at)
+        return bool(expires_at and expires_at <= datetime.now(timezone.utc))
 
     def needs_renewal(self) -> bool:
         """Check if KYC needs renewal"""
@@ -405,15 +425,14 @@ class UserRiskProfile(BaseModel, TimestampMixin, AuditMixin):
             or self.is_high_risk()
             or (
                 self.monitoring_end_date
-                and self.monitoring_end_date > datetime.now(timezone.utc)
+                and _as_aware(self.monitoring_end_date) > datetime.now(timezone.utc)
             )
         )
 
     def is_due_for_review(self) -> bool:
         """Check if risk profile is due for review"""
-        return self.next_review_date and self.next_review_date <= datetime.now(
-            timezone.utc
-        )
+        next_review = _as_aware(self.next_review_date)
+        return bool(next_review and next_review <= datetime.now(timezone.utc))
 
     def update_risk_level(self, new_level: RiskLevel, reason: str = None) -> None:
         """Update risk level with audit trail"""

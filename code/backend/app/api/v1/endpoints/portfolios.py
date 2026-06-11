@@ -48,8 +48,17 @@ async def get_user_portfolios(
         portfolios = await portfolio_service.get_user_portfolios(
             current_user.id, page, size, include_deleted
         )
+        total = await portfolio_service.count_user_portfolios(
+            current_user.id, include_deleted
+        )
 
-        return portfolios
+        return PaginatedResponse(
+            items=[PortfolioResponse.model_validate(p) for p in portfolios],
+            total=total,
+            page=page,
+            size=size,
+            pages=(total + size - 1) // size if total else 0,
+        )
 
     except Exception as e:
         logger.error(f"Error getting user portfolios: {e}")
@@ -80,10 +89,10 @@ async def create_portfolio(
             "portfolio_created",
             "portfolio",
             str(portfolio.id),
-            new_values=portfolio_data.dict(),
+            new_values=portfolio_data.model_dump(mode="json"),
         )
 
-        return PortfolioResponse.from_orm(portfolio)
+        return PortfolioResponse.model_validate(portfolio)
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -113,7 +122,7 @@ async def get_portfolio(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
             )
 
-        return PortfolioResponse.from_orm(portfolio)
+        return PortfolioResponse.model_validate(portfolio)
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -147,10 +156,10 @@ async def update_portfolio(
             "portfolio_updated",
             "portfolio",
             portfolio_id,
-            new_values=portfolio_update.dict(exclude_unset=True),
+            new_values=portfolio_update.model_dump(mode="json", exclude_unset=True),
         )
 
-        return PortfolioResponse.from_orm(portfolio)
+        return PortfolioResponse.model_validate(portfolio)
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -206,7 +215,7 @@ async def get_portfolio_assets(
             portfolio_id, current_user.id
         )
 
-        return [PortfolioAssetResponse.from_orm(asset) for asset in assets]
+        return [PortfolioAssetResponse.model_validate(asset) for asset in assets]
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -240,10 +249,10 @@ async def add_portfolio_asset(
             "portfolio_asset_added",
             "portfolio_asset",
             str(asset.id),
-            new_values=asset_data.dict(),
+            new_values=asset_data.model_dump(mode="json"),
         )
 
-        return PortfolioAssetResponse.from_orm(asset)
+        return PortfolioAssetResponse.model_validate(asset)
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -278,10 +287,10 @@ async def update_portfolio_asset(
             "portfolio_asset_updated",
             "portfolio_asset",
             asset_id,
-            new_values=asset_update.dict(exclude_unset=True),
+            new_values=asset_update.model_dump(mode="json", exclude_unset=True),
         )
 
-        return PortfolioAssetResponse.from_orm(asset)
+        return PortfolioAssetResponse.model_validate(asset)
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -404,7 +413,7 @@ async def rebalance_portfolio(
             "portfolio_rebalanced",
             "portfolio",
             portfolio_id,
-            new_values=rebalance_request.dict(),
+            new_values=rebalance_request.model_dump(mode="json"),
         )
 
         return rebalance_result

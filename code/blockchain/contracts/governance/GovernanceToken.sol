@@ -17,8 +17,9 @@ contract GovernanceToken is ERC20Votes, Ownable {
     constructor()
         ERC20("ChainFinity Governance", "CFG")
         ERC20Permit("ChainFinity Governance")
-        Ownable(msg.sender)
     {
+        // OpenZeppelin v4 Ownable sets the owner to msg.sender automatically;
+        // it takes no constructor argument (that is the v5 API).
         _mint(msg.sender, _INITIAL_SUPPLY);
     }
 

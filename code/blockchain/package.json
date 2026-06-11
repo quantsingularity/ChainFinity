@@ -1,9 +1,18 @@
 {
-  "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
-    "@openzeppelin/contracts": "^5.4.0",
-    "@openzeppelin/hardhat-upgrades": "^3.9.1",
-    "hardhat": "^3.0.0"
+  "name": "chainfinity-contracts",
+  "version": "1.0.0",
+  "description": "ChainFinity smart contracts: asset vault, cross-chain manager, DeFi protocol, and governance",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test"
   },
-  "type": "module"
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/hardhat-upgrades": "^2.5.1",
+    "hardhat": "^2.22.0"
+  },
+  "dependencies": {
+    "@chainlink/contracts-ccip": "^1.4.0",
+    "@openzeppelin/contracts": "^4.9.6"
+  }
 }

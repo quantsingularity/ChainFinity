@@ -436,18 +436,22 @@ class TestPortfolioService:
     ):
         """Test retrieving transaction history"""
         mock_transactions = [Mock(), Mock(), Mock()]
+        # First execute() resolves the portfolio (ownership check), the second
+        # returns the transactions.
         db_session.execute = AsyncMock(
-            return_value=Mock(
-                scalars=Mock(
-                    return_value=Mock(all=Mock(return_value=mock_transactions))
-                )
-            )
+            side_effect=[
+                Mock(scalar_one_or_none=Mock(return_value=sample_portfolio)),
+                Mock(
+                    scalars=Mock(
+                        return_value=Mock(all=Mock(return_value=mock_transactions))
+                    )
+                ),
+            ]
         )
         result = await portfolio_service.get_transaction_history(
             sample_portfolio.id, sample_portfolio.user_id, limit=10
         )
         assert len(result) == 3
-        db_session.execute.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_generate_portfolio_report(
@@ -550,7 +554,9 @@ class TestPortfolioService:
         await portfolio_service.delete_portfolio(portfolio.id, sample_user.id)
         assert db_session.add.call_count >= 2
         assert db_session.commit.call_count >= 4
-        assert db_session.delete.call_count >= 1
+        # delete_portfolio performs a soft delete (auditable), so it flips the
+        # is_deleted flag and commits rather than issuing a hard db.delete().
+        assert portfolio.is_deleted is True
 
     @pytest.mark.asyncio
     async def test_large_portfolio_performance(
@@ -559,10 +565,11 @@ class TestPortfolioService:
         """Test performance with large number of assets"""
         assets = []
         for i in range(100):
-            asset = Mock()
-            asset.symbol = f"ASSET{i}"
-            asset.quantity = Decimal("10.0")
-            asset.current_price = Decimal("100.0")
+            asset = PortfolioAsset(
+                asset_symbol=f"ASSET{i}",
+                quantity=Decimal("10.0"),
+                current_price=Decimal("100.0"),
+            )
             assets.append(asset)
         sample_portfolio.assets = assets
         db_session.execute = AsyncMock(

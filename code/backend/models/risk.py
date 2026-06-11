@@ -234,6 +234,18 @@ class RiskMetrics(BaseModel, TimestampMixin):
             return RiskLevel.LOW
 
 
+class AlertType(enum.Enum):
+    """Alert rule type enumeration"""
+
+    PRICE_THRESHOLD = "price_threshold"
+    VOLATILITY = "volatility"
+    DRAWDOWN = "drawdown"
+    VAR_BREACH = "var_breach"
+    CONCENTRATION = "concentration"
+    LIQUIDITY = "liquidity"
+    CUSTOM = "custom"
+
+
 class AlertRule(BaseModel, TimestampMixin, AuditMixin):
     """
     Configurable alert rules for risk monitoring
@@ -241,14 +253,24 @@ class AlertRule(BaseModel, TimestampMixin, AuditMixin):
 
     __tablename__ = "alert_rules"
 
+    # Ownership / scoping — alert rules are created per user and (optionally)
+    # per portfolio by the risk API.
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
+    )
+    portfolio_id = Column(
+        UUID(as_uuid=True), ForeignKey("portfolios.id"), nullable=True, index=True
+    )
+
     # Rule Details
-    rule_name = Column(String(100), unique=True, nullable=False, index=True)
+    rule_name = Column(String(100), nullable=False, index=True)
     rule_type = Column(String(50), nullable=False, index=True)
     description = Column(Text, nullable=True)
 
     # Rule Configuration
-    conditions = Column(JSON, nullable=False)
-    thresholds = Column(JSON, nullable=False)
+    threshold_value = Column(Numeric(20, 8), nullable=True)
+    conditions = Column(JSON, nullable=True)
+    thresholds = Column(JSON, nullable=True)
     parameters = Column(JSON, nullable=True)
 
     # Alert Settings
@@ -274,9 +296,11 @@ class AlertRule(BaseModel, TimestampMixin, AuditMixin):
 
     def is_due_for_execution(self) -> bool:
         """Check if rule is due for execution"""
+        next_execution = self.next_execution
+        if next_execution is not None and next_execution.tzinfo is None:
+            next_execution = next_execution.replace(tzinfo=timezone.utc)
         return self.is_active and (
-            self.next_execution is None
-            or self.next_execution <= datetime.now(timezone.utc)
+            next_execution is None or next_execution <= datetime.now(timezone.utc)
         )
 
     def record_execution(self, alerts_generated: int = 0) -> None:

@@ -4,15 +4,32 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "@chainlink/contracts/src/v0.8/ccip/interfaces/IRouterClient.sol";
-import "@chainlink/contracts/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
-import "@chainlink/contracts/src/v0.8/ccip/libraries/Client.sol";
+import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
+import {IAny2EVMMessageReceiver} from "@chainlink/contracts-ccip/contracts/interfaces/IAny2EVMMessageReceiver.sol";
+import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 
 /**
  * @title CrossChainManager
- * @dev Manages cross-chain transfers with Chainlink CCIP integration, rate limiting, and circuit breakers
+ * @dev Manages cross-chain transfers with Chainlink CCIP integration, rate
+ *      limiting, and circuit breakers.
+ *
+ * Security model (fixes applied during review):
+ *  - ccipReceive validates BOTH the source chain selector and that the
+ *    message sender is the registered trusted CrossChainManager on that
+ *    chain. The previous implementation accepted any CCIP message and paid
+ *    out arbitrary tokens to an attacker-chosen receiver.
+ *  - The receiver address travels inside the message data (the
+ *    Client.Any2EVMMessage struct has no `receiver` field; the old code
+ *    referenced one and could not compile).
+ *  - LP fees are tracked per-token in `collectedFees` and only that amount
+ *    is ever distributed. The old distributeFees paid out the contract's
+ *    ENTIRE balance - including users' in-flight bridge principal - and
+ *    iterated OPERATOR_ROLE members instead of liquidity providers.
+ *  - initiateTransfer is payable: the caller funds the CCIP fee, with any
+ *    excess refunded, instead of silently draining contract ETH.
  */
 contract CrossChainManager is
     ReentrancyGuard,
@@ -21,6 +38,8 @@ contract CrossChainManager is
     Initializable,
     IAny2EVMMessageReceiver
 {
+    using SafeERC20 for IERC20;
+
     // Role definitions
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
@@ -41,14 +60,20 @@ contract CrossChainManager is
 
     // Fee sharing
     uint256 public liquidityProviderFee; // in basis points (1/100 of a percent)
+    uint256 public constant MAX_LP_FEE = 500; // 5% cap
     mapping(address => uint256) public liquidityProviderShares;
+    address[] public liquidityProviders;
+    mapping(address => uint256) private _providerIndex; // index + 1; 0 = absent
     uint256 public totalLiquidityShares;
+
+    // Fees collected per token, the ONLY funds distributeFees may pay out.
+    mapping(address => uint256) public collectedFees;
 
     struct CrossChainTransfer {
         address sender;
         address token;
         uint256 amount;
-        uint256 targetChainId;
+        uint64 targetChainSelector;
         address targetAddress;
         uint256 timestamp;
         bool completed;
@@ -56,7 +81,9 @@ contract CrossChainManager is
     }
 
     mapping(bytes32 => CrossChainTransfer) public transfers;
-    mapping(uint64 => bool) public supportedChains; // Using uint64 for Chainlink CCIP compatibility
+    mapping(uint64 => bool) public supportedChains; // Chainlink CCIP chain selectors
+    // Trusted CrossChainManager deployment per source chain selector.
+    mapping(uint64 => address) public trustedRemotes;
     uint256 public transferCount;
 
     // Events
@@ -65,18 +92,19 @@ contract CrossChainManager is
         address indexed sender,
         address indexed token,
         uint256 amount,
-        uint64 targetChainId,
+        uint64 targetChainSelector,
         address targetAddress,
         bytes32 ccipMessageId
     );
-    event TransferCompleted(bytes32 indexed transferId);
-    event ChainSupported(uint64 chainId, bool supported);
+    event TransferCompleted(bytes32 indexed messageId);
+    event ChainSupported(uint64 chainSelector, bool supported);
+    event TrustedRemoteSet(uint64 chainSelector, address remote);
     event RateLimitUpdated(uint256 transferLimit, uint256 transferCooldown);
     event CircuitBreakerUpdated(uint256 dailyTransferLimit);
     event LiquidityProviderAdded(address indexed provider, uint256 shares);
     event LiquidityProviderRemoved(address indexed provider);
-    event FeesDistributed(uint256 totalFees);
-    event MessageReceived(bytes32 indexed messageId, uint64 sourceChainId);
+    event FeesDistributed(address indexed token, uint256 totalFees);
+    event MessageReceived(bytes32 indexed messageId, uint64 sourceChainSelector);
 
     /**
      * @dev Initialize function for upgradeable pattern
@@ -87,6 +115,9 @@ contract CrossChainManager is
         address emergency,
         address routerAddress
     ) public initializer {
+        require(admin != address(0), "Invalid admin");
+        require(routerAddress != address(0), "Invalid router");
+
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ADMIN_ROLE, admin);
         _grantRole(OPERATOR_ROLE, operator);
@@ -94,7 +125,7 @@ contract CrossChainManager is
 
         router = IRouterClient(routerAddress);
 
-        // Initialize supported chains (using Chainlink CCIP chain selectors)
+        // Initialize supported chains (Chainlink CCIP chain selectors)
         supportedChains[5009297550715157269] = true; // Ethereum Mainnet
         supportedChains[4949039107694359620] = true; // Arbitrum
         supportedChains[4051577828743386545] = true; // Polygon
@@ -110,20 +141,26 @@ contract CrossChainManager is
     }
 
     /**
-     * @dev Initiate a cross-chain transfer using Chainlink CCIP
+     * @dev Initiate a cross-chain transfer using Chainlink CCIP.
+     *      The caller must send enough native token to cover the CCIP fee;
+     *      any excess is refunded.
      * @param token Token address
      * @param amount Amount to transfer
-     * @param targetChainId Target chain ID (Chainlink selector)
-     * @param targetAddress Target address on destination chain
+     * @param targetChainSelector Target chain (Chainlink selector)
+     * @param targetAddress Receiver address on the destination chain
      */
     function initiateTransfer(
         address token,
         uint256 amount,
-        uint64 targetChainId,
+        uint64 targetChainSelector,
         address targetAddress
-    ) external nonReentrant whenNotPaused {
-        // Check rate limits
-        require(supportedChains[targetChainId], "Unsupported target chain");
+    ) external payable nonReentrant whenNotPaused returns (bytes32 transferId) {
+        require(supportedChains[targetChainSelector], "Unsupported target chain");
+        require(
+            trustedRemotes[targetChainSelector] != address(0),
+            "No trusted remote for chain"
+        );
+        require(targetAddress != address(0), "Invalid target address");
         require(amount > 0, "Amount must be greater than 0");
         require(amount <= transferLimit, "Amount exceeds transfer limit");
         require(
@@ -131,7 +168,7 @@ contract CrossChainManager is
             "Transfer cooldown active"
         );
 
-        // Check circuit breaker
+        // Circuit breaker with daily window reset
         if (block.timestamp > dailyResetTimestamp) {
             dailyTransferTotal = 0;
             dailyResetTimestamp = block.timestamp + 1 days;
@@ -141,45 +178,49 @@ contract CrossChainManager is
             "Daily transfer limit reached"
         );
 
-        // Update rate limiting state
+        // Update rate limiting state (effects before interactions)
         lastTransferTime[msg.sender] = block.timestamp;
         dailyTransferTotal += amount;
 
         // Calculate fees
         uint256 lpFee = (amount * liquidityProviderFee) / 10000;
         uint256 netAmount = amount - lpFee;
+        collectedFees[token] += lpFee;
 
-        // Transfer tokens to this contract
-        require(
-            IERC20(token).transferFrom(msg.sender, address(this), amount),
-            "Token transfer failed"
-        );
+        // Pull tokens into this contract (escrowed as bridge liquidity)
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
-        // Prepare CCIP message
+        // Prepare CCIP message. The receiver contract on the destination
+        // chain is the trusted remote CrossChainManager; the end-user
+        // receiver address travels inside `data`.
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
-            receiver: abi.encode(targetAddress),
-            data: abi.encode(msg.sender, token, netAmount),
-            tokenAmounts: new Client.EVMTokenAmount[](0), // No tokens sent through CCIP directly
+            receiver: abi.encode(trustedRemotes[targetChainSelector]),
+            data: abi.encode(msg.sender, targetAddress, token, netAmount),
+            tokenAmounts: new Client.EVMTokenAmount[](0),
             extraArgs: "",
-            feeToken: address(0) // Use native gas token for fees
+            feeToken: address(0) // pay CCIP fee in native token
         });
 
-        // Get the fee required for sending the message
-        uint256 ccipFee = router.getFee(targetChainId, message);
+        uint256 ccipFee = router.getFee(targetChainSelector, message);
+        require(msg.value >= ccipFee, "Insufficient CCIP fee");
 
-        // Send the CCIP message
         bytes32 messageId = router.ccipSend{value: ccipFee}(
-            targetChainId,
+            targetChainSelector,
             message
         );
 
-        // Create transfer record
-        bytes32 transferId = keccak256(
+        // Refund excess native token
+        if (msg.value > ccipFee) {
+            (bool refunded, ) = msg.sender.call{value: msg.value - ccipFee}("");
+            require(refunded, "Fee refund failed");
+        }
+
+        transferId = keccak256(
             abi.encodePacked(
                 msg.sender,
                 token,
                 amount,
-                targetChainId,
+                targetChainSelector,
                 targetAddress,
                 block.timestamp,
                 transferCount
@@ -190,7 +231,7 @@ contract CrossChainManager is
             sender: msg.sender,
             token: token,
             amount: netAmount,
-            targetChainId: targetChainId,
+            targetChainSelector: targetChainSelector,
             targetAddress: targetAddress,
             timestamp: block.timestamp,
             completed: false,
@@ -204,57 +245,72 @@ contract CrossChainManager is
             msg.sender,
             token,
             netAmount,
-            targetChainId,
+            targetChainSelector,
             targetAddress,
             messageId
         );
     }
 
     /**
-     * @dev Receive and process messages from Chainlink CCIP
-     * @param message The CCIP message
+     * @dev Receive and process messages from Chainlink CCIP.
+     *
+     * Hardened against the original fund-drain vector: only messages
+     * relayed by the router, originating from a supported chain, AND sent
+     * by that chain's registered trusted remote are processed.
      */
     function ccipReceive(
         Client.Any2EVMMessage calldata message
-    ) external override {
-        // Verify the sender is the router
+    ) external override nonReentrant whenNotPaused {
         require(msg.sender == address(router), "Sender not router");
-
-        // Decode the message data
-        (address sender, address token, uint256 amount) = abi.decode(
-            message.data,
-            (address, address, uint256)
-        );
-
-        // Process the received message
-        address receiver = abi.decode(message.receiver, (address));
-
-        // Transfer tokens to the receiver
         require(
-            IERC20(token).transfer(receiver, amount),
-            "Token transfer failed"
+            supportedChains[message.sourceChainSelector],
+            "Unsupported source chain"
         );
+        address remoteSender = abi.decode(message.sender, (address));
+        require(
+            remoteSender != address(0) &&
+                remoteSender == trustedRemotes[message.sourceChainSelector],
+            "Untrusted remote sender"
+        );
+
+        (
+            ,
+            /* address originalSender */ address receiver,
+            address token,
+            uint256 amount
+        ) = abi.decode(message.data, (address, address, address, uint256));
+        require(receiver != address(0), "Invalid receiver");
+
+        IERC20(token).safeTransfer(receiver, amount);
 
         emit MessageReceived(message.messageId, message.sourceChainSelector);
+        emit TransferCompleted(message.messageId);
     }
 
     /**
      * @dev Add or update a supported chain
-     * @param chainId Chainlink CCIP chain selector
-     * @param supported Whether the chain is supported
      */
     function setSupportedChain(
-        uint64 chainId,
+        uint64 chainSelector,
         bool supported
     ) external onlyRole(ADMIN_ROLE) {
-        supportedChains[chainId] = supported;
-        emit ChainSupported(chainId, supported);
+        supportedChains[chainSelector] = supported;
+        emit ChainSupported(chainSelector, supported);
+    }
+
+    /**
+     * @dev Register the trusted CrossChainManager deployment for a chain.
+     */
+    function setTrustedRemote(
+        uint64 chainSelector,
+        address remote
+    ) external onlyRole(ADMIN_ROLE) {
+        trustedRemotes[chainSelector] = remote;
+        emit TrustedRemoteSet(chainSelector, remote);
     }
 
     /**
      * @dev Update rate limits
-     * @param newTransferLimit New transfer limit
-     * @param newTransferCooldown New transfer cooldown
      */
     function updateRateLimit(
         uint256 newTransferLimit,
@@ -267,7 +323,6 @@ contract CrossChainManager is
 
     /**
      * @dev Update circuit breaker
-     * @param newDailyTransferLimit New daily transfer limit
      */
     function updateCircuitBreaker(
         uint256 newDailyTransferLimit
@@ -277,9 +332,17 @@ contract CrossChainManager is
     }
 
     /**
-     * @dev Add a liquidity provider
-     * @param provider Provider address
-     * @param shares Number of shares
+     * @dev Update the LP fee (capped to prevent admin fee abuse).
+     */
+    function updateLiquidityProviderFee(
+        uint256 newFeeBps
+    ) external onlyRole(ADMIN_ROLE) {
+        require(newFeeBps <= MAX_LP_FEE, "Fee too high");
+        liquidityProviderFee = newFeeBps;
+    }
+
+    /**
+     * @dev Add (or top up) a liquidity provider.
      */
     function addLiquidityProvider(
         address provider,
@@ -288,6 +351,10 @@ contract CrossChainManager is
         require(provider != address(0), "Invalid provider address");
         require(shares > 0, "Shares must be greater than 0");
 
+        if (_providerIndex[provider] == 0) {
+            liquidityProviders.push(provider);
+            _providerIndex[provider] = liquidityProviders.length;
+        }
         liquidityProviderShares[provider] += shares;
         totalLiquidityShares += shares;
 
@@ -295,58 +362,74 @@ contract CrossChainManager is
     }
 
     /**
-     * @dev Remove a liquidity provider
-     * @param provider Provider address
+     * @dev Remove a liquidity provider entirely.
      */
     function removeLiquidityProvider(
         address provider
     ) external onlyRole(ADMIN_ROLE) {
-        require(
-            liquidityProviderShares[provider] > 0,
-            "Provider does not exist"
-        );
+        require(liquidityProviderShares[provider] > 0, "Provider does not exist");
 
         totalLiquidityShares -= liquidityProviderShares[provider];
         liquidityProviderShares[provider] = 0;
+
+        // Swap-and-pop from the providers array
+        uint256 index = _providerIndex[provider];
+        if (index != 0) {
+            uint256 lastIndex = liquidityProviders.length;
+            if (index != lastIndex) {
+                address lastProvider = liquidityProviders[lastIndex - 1];
+                liquidityProviders[index - 1] = lastProvider;
+                _providerIndex[lastProvider] = index;
+            }
+            liquidityProviders.pop();
+            _providerIndex[provider] = 0;
+        }
 
         emit LiquidityProviderRemoved(provider);
     }
 
     /**
-     * @dev Distribute collected fees to liquidity providers
-     * @param token Token address
+     * @dev Number of registered liquidity providers.
      */
-    function distributeFees(address token) external onlyRole(OPERATOR_ROLE) {
-        require(totalLiquidityShares > 0, "No liquidity providers");
-
-        uint256 balance = IERC20(token).balanceOf(address(this));
-        require(balance > 0, "No fees to distribute");
-
-        uint256 totalDistributed = 0;
-
-        // Distribute to each provider based on their share
-        uint256 memberCount = getRoleMemberCount(OPERATOR_ROLE);
-        for (uint256 i = 0; i < memberCount; i++) {
-            address provider = getRoleMember(OPERATOR_ROLE, i);
-            if (liquidityProviderShares[provider] > 0) {
-                uint256 providerShare =
-                    (balance * liquidityProviderShares[provider]) /
-                        totalLiquidityShares;
-                if (providerShare > 0) {
-                    require(
-                        IERC20(token).transfer(provider, providerShare),
-                        "Fee transfer failed"
-                    );
-                    totalDistributed += providerShare;
-                }
-            }
-        }
-
-        emit FeesDistributed(totalDistributed);
+    function liquidityProviderCount() external view returns (uint256) {
+        return liquidityProviders.length;
     }
 
     /**
-     
+     * @dev Distribute collected fees (and ONLY collected fees) for a token
+     *      to liquidity providers pro-rata by shares.
+     */
+    function distributeFees(
+        address token
+    ) external nonReentrant onlyRole(OPERATOR_ROLE) {
+        require(totalLiquidityShares > 0, "No liquidity providers");
+
+        uint256 fees = collectedFees[token];
+        require(fees > 0, "No fees to distribute");
+
+        // Effects before interactions: zero the pot first.
+        collectedFees[token] = 0;
+
+        uint256 totalDistributed = 0;
+        uint256 providerCount = liquidityProviders.length;
+        for (uint256 i = 0; i < providerCount; i++) {
+            address provider = liquidityProviders[i];
+            uint256 shares = liquidityProviderShares[provider];
+            if (shares == 0) continue;
+            uint256 providerShare = (fees * shares) / totalLiquidityShares;
+            if (providerShare > 0) {
+                IERC20(token).safeTransfer(provider, providerShare);
+                totalDistributed += providerShare;
+            }
+        }
+
+        // Rounding dust stays earmarked for the next distribution.
+        if (fees > totalDistributed) {
+            collectedFees[token] = fees - totalDistributed;
+        }
+
+        emit FeesDistributed(token, totalDistributed);
+    }
 
     /**
      * @dev Pause the contract
@@ -364,7 +447,6 @@ contract CrossChainManager is
 
     /**
      * @dev Get transfer details
-     * @param transferId Transfer ID
      */
     function getTransfer(
         bytes32 transferId
@@ -373,7 +455,18 @@ contract CrossChainManager is
     }
 
     /**
-     * @dev Receive function to accept ETH for CCIP fees
+     * @dev IERC165 support (AccessControlEnumerable + CCIP receiver).
+     */
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(AccessControlEnumerable) returns (bool) {
+        return
+            interfaceId == type(IAny2EVMMessageReceiver).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
+    /**
+     * @dev Accept ETH refunds (e.g. router overpayment returns).
      */
     receive() external payable {}
 }

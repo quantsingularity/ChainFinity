@@ -1,19 +1,39 @@
 """
 Password Service
-Handles password hashing, verification, and strength validation
+Handles password hashing, verification, and strength validation.
+
+Implemented directly on top of the `bcrypt` library. The previous
+implementation used passlib's CryptContext, but passlib 1.7.4 is unmaintained
+and breaks at runtime with bcrypt >= 4.1 (it probes the removed
+`bcrypt.__about__` attribute and then mis-handles hashing). Using bcrypt
+directly keeps full compatibility with existing `$2b$` hashes.
 """
 
+import hashlib
 import logging
 import re
 from typing import Optional, Tuple
 
+import bcrypt
 from config.settings import settings
-from passlib.context import CryptContext
 
 logger = logging.getLogger(__name__)
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Work factor for new hashes. 12 is the common production default.
+BCRYPT_ROUNDS = 12
+
+
+def _prepare_password(password: str) -> bytes:
+    """Normalise a password for bcrypt.
+
+    bcrypt silently truncates input at 72 bytes (and bcrypt >= 4.1 raises
+    instead). Pre-hashing longer passwords with SHA-256 keeps their full
+    entropy while always staying under the limit.
+    """
+    encoded = password.encode("utf-8")
+    if len(encoded) > 72:
+        encoded = hashlib.sha256(encoded).hexdigest().encode("ascii")
+    return encoded
 
 
 class PasswordService:
@@ -24,14 +44,18 @@ class PasswordService:
     @staticmethod
     def hash_password(password: str) -> str:
         """Hash a plain text password"""
-        return pwd_context.hash(password)
+        salt = bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
+        return bcrypt.hashpw(_prepare_password(password), salt).decode("ascii")
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash"""
         try:
-            return pwd_context.verify(plain_password, hashed_password)
-        except Exception as e:
+            return bcrypt.checkpw(
+                _prepare_password(plain_password),
+                hashed_password.encode("ascii"),
+            )
+        except (ValueError, TypeError) as e:
             logger.error(f"Password verification error: {e}")
             return False
 
@@ -70,8 +94,14 @@ class PasswordService:
 
     @staticmethod
     def needs_rehash(hashed_password: str) -> bool:
-        """Check if password hash needs to be updated"""
-        return pwd_context.needs_update(hashed_password)
+        """Check if password hash needs to be updated (e.g. lower cost factor)"""
+        try:
+            parts = hashed_password.split("$")
+            # Format: $2b$<rounds>$<salt+digest>
+            return int(parts[2]) < BCRYPT_ROUNDS
+        except (IndexError, ValueError):
+            # Unknown / malformed hash: rehash on next successful login
+            return True
 
     @staticmethod
     def generate_temporary_password(length: int = 16) -> str:

@@ -15,6 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 REQUIRED_KYC_FIELDS = {"first_name", "last_name", "date_of_birth", "nationality"}
+# The user-facing KYC submission schema (UserKYCUpdate) carries document
+# fields rather than identity fields, so a document-based submission is also
+# considered complete.
+REQUIRED_DOCUMENT_FIELDS = {"document_type", "document_number", "country"}
 
 
 class KYCService:
@@ -28,14 +32,24 @@ class KYCService:
     def _validate_kyc_data(self, kyc_data: Dict[str, Any]) -> bool:
         """
         Validate that required KYC fields are present.
-        Returns True if valid, raises ValueError if not.
+
+        A submission is valid if it contains a complete identity set OR a
+        complete document set. Returns True if valid, raises ValueError if not.
         """
-        missing = REQUIRED_KYC_FIELDS - set(kyc_data.keys())
-        if missing:
-            raise ValueError(
-                f"Missing required KYC fields: {', '.join(sorted(missing))}"
-            )
-        return True
+        keys = set(kyc_data.keys())
+        if REQUIRED_KYC_FIELDS.issubset(keys):
+            return True
+        if REQUIRED_DOCUMENT_FIELDS.issubset(keys):
+            return True
+        # Report whichever set the caller was closest to completing.
+        identity_missing = REQUIRED_KYC_FIELDS - keys
+        document_missing = REQUIRED_DOCUMENT_FIELDS - keys
+        missing = (
+            document_missing
+            if len(document_missing) <= len(identity_missing)
+            else identity_missing
+        )
+        raise ValueError(f"Missing required KYC fields: {', '.join(sorted(missing))}")
 
     async def _submit_to_provider(self, kyc_data: Dict[str, Any]) -> Dict[str, Any]:
         """Submit KYC data to external provider (stub)."""

@@ -17,6 +17,8 @@ from schemas.auth import (
     MFASetupResponse,
     MFAVerifyRequest,
     PasswordChangeRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
     RefreshTokenRequest,
     RegisterRequest,
     Token,
@@ -327,30 +329,28 @@ async def verify_mfa(
 
 @router.post("/forgot-password", response_model=SuccessResponse)
 async def forgot_password(
-    request: Request,
+    request: PasswordResetRequest,
     db: AsyncSession = Depends(get_async_session),
 ) -> Any:
     """
     Request password reset email.
     Always returns success to avoid email enumeration.
     """
-    from models.user import User
     from sqlalchemy import select
 
     try:
-        body = await request.json()
-        email = body.get("email", "")
-
         result = await db.execute(
-            select(User).where(User.email == email, User.is_deleted == False)
+            select(User).where(User.email == request.email, User.is_deleted == False)
         )
         user = result.scalar_one_or_none()
 
         if user and user.is_active():
-            reset_token = auth_service.jwt_service.create_access_token(
-                data={"sub": str(user.id), "purpose": "password_reset"},
-            )
-            # In production: send reset_token via email service
+            # Short-lived, single-purpose token. verify_current_user rejects
+            # tokens carrying a "purpose" claim, so this can never be used as
+            # a regular API access token.
+            auth_service.create_password_reset_token(user)
+            # In production: hand reset_token to the email service. We
+            # intentionally do not return it in the response.
             logger.info(f"Password reset requested for user: {user.email}")
 
         return SuccessResponse(
@@ -366,11 +366,27 @@ async def forgot_password(
 
 @router.post("/reset-password", response_model=SuccessResponse)
 async def reset_password(
+    request: PasswordResetConfirm,
+    client_info: dict = Depends(get_client_info),
     db: AsyncSession = Depends(get_async_session),
 ) -> Any:
     """
     Reset password using a valid reset token.
     """
-
-    # Note: body parsing would be done via Pydantic model in production
-    return SuccessResponse(message="Password reset endpoint available")
+    try:
+        await auth_service.reset_password_with_token(
+            db=db,
+            token=request.token,
+            new_password=request.new_password,
+            ip_address=client_info["ip_address"],
+            user_agent=client_info["user_agent"],
+        )
+        return SuccessResponse(message="Password has been reset successfully")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Password reset error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Password reset failed",
+        )
