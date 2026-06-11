@@ -38,7 +38,14 @@ export default function RegisterScreen() {
       return;
     }
     setSubmitting(true);
-    const result = await register({ email: email.trim(), password });
+    const result = await register({
+      email: email.trim(),
+      password,
+      // Required by the backend RegisterRequest.
+      confirm_password: confirm,
+      terms_accepted: true,
+      privacy_accepted: true,
+    });
     setSubmitting(false);
     if (result.success) {
       setDone(true);

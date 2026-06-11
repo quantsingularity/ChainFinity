@@ -1,9 +1,16 @@
+# Alertmanager configuration for the local Docker Compose stack.
+#
+# This is a self-contained config that starts cleanly without external secret
+# files. The previous version referenced smtp_auth_password_file,
+# pagerduty service_key_file, and pagerduty_key paths that are not mounted in
+# compose, which makes Alertmanager fail validation at startup.
+#
+# For production, supply real SMTP/PagerDuty credentials (the Kubernetes
+# Alertmanager in kubernetes/monitoring/alertmanager.yaml is configured
+# separately via its own ConfigMap and secret mounts).
+
 global:
   resolve_timeout: 5m
-  smtp_smarthost: "smtp.chainfinity.com:587"
-  smtp_from: "alerts@chainfinity.com"
-  smtp_auth_username: "alerts@chainfinity.com"
-  smtp_auth_password_file: /etc/alertmanager/smtp_password
 
 route:
   group_by: ["alertname", "cluster", "service"]
@@ -21,24 +28,14 @@ route:
       receiver: "warning-alerts"
 
 receivers:
+  # Local default: alerts are visible in the Alertmanager UI (no external
+  # delivery is configured so the stack starts without credentials).
   - name: "default"
-    email_configs:
-      - to: "devops@chainfinity.com"
-        send_resolved: true
-
   - name: "critical-alerts"
-    email_configs:
-      - to: "security@chainfinity.com,devops@chainfinity.com,admin@chainfinity.com"
-        send_resolved: true
-    pagerduty_configs:
-      - service_key_file: /etc/alertmanager/pagerduty_key
-
   - name: "warning-alerts"
-    email_configs:
-      - to: "devops@chainfinity.com"
-        send_resolved: true
 
 inhibit_rules:
+  # A firing critical alert silences a warning for the same alert/service.
   - source_match:
       severity: "critical"
     target_match:

@@ -1,4 +1,5 @@
-import { Email, ArrowBack } from "@mui/icons-material";
+import Email from "@mui/icons-material/Email";
+import ArrowBack from "@mui/icons-material/ArrowBack";
 import {
   Alert,
   Box,

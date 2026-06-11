@@ -1,7 +1,5 @@
-import {
-  ArrowBack as BackIcon,
-  Analytics as AnalyticsIcon,
-} from "@mui/icons-material";
+import BackIcon from "@mui/icons-material/ArrowBack";
+import AnalyticsIcon from "@mui/icons-material/Analytics";
 import {
   Box,
   Button,

@@ -1,12 +1,10 @@
-import {
-  ArrowForward as ArrowForwardIcon,
-  Layers as LayersIcon,
-  Security as SecurityIcon,
-  Speed as SpeedIcon,
-  SwapHoriz as SwapIcon,
-  TrendingUp as TrendingUpIcon,
-  AccountBalanceWallet as WalletIcon,
-} from "@mui/icons-material";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import LayersIcon from "@mui/icons-material/Layers";
+import SecurityIcon from "@mui/icons-material/Security";
+import SpeedIcon from "@mui/icons-material/Speed";
+import SwapIcon from "@mui/icons-material/SwapHoriz";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import WalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import {
   Avatar,
   Box,

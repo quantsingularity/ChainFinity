@@ -1,4 +1,4 @@
-import { Send as SendIcon } from "@mui/icons-material";
+import SendIcon from "@mui/icons-material/Send";
 import {
   Box,
   Button,

@@ -1,10 +1,8 @@
-import {
-  CompareArrows as BridgeIcon,
-  CheckCircle as CheckIcon,
-  Error as ErrorIcon,
-  Refresh as RefreshIcon,
-  Schedule as PendingIcon,
-} from "@mui/icons-material";
+import BridgeIcon from "@mui/icons-material/CompareArrows";
+import CheckIcon from "@mui/icons-material/CheckCircle";
+import ErrorIcon from "@mui/icons-material/Error";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import PendingIcon from "@mui/icons-material/Schedule";
 import {
   Box,
   Button,

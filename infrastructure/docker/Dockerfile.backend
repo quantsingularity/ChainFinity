@@ -1,3 +1,11 @@
+# syntax=docker/dockerfile:1
+# ChainFinity backend image.
+#
+# Build context must be the REPOSITORY ROOT (see docker-compose.yml), because
+# the backend source lives at code/backend/. The previous version used a
+# build context of the infrastructure/ directory and copied requirements.txt
+# from there, so it never actually packaged the application.
+
 # ---- Build Stage ----
 FROM python:3.11-slim AS builder
 
@@ -8,9 +16,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY code/backend/requirements.txt .
+# gunicorn is the production process manager invoked below but is not pinned
+# in requirements.txt, so install it explicitly alongside the app deps.
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir --user -r requirements.txt
+    pip install --no-cache-dir --user -r requirements.txt && \
+    pip install --no-cache-dir --user "gunicorn==21.2.0"
 
 # ---- Production Stage ----
 FROM python:3.11-slim AS production
@@ -29,11 +40,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# The builder installed packages with --user as root, so they live in
+# /root/.local; relocate them into the runtime user's home.
 COPY --from=builder --chown=appuser:appgroup /root/.local /home/appuser/.local
-COPY --chown=appuser:appgroup . .
+# Copy ONLY the backend application source (context is the repo root).
+COPY --chown=appuser:appgroup code/backend/ .
 
-RUN mkdir -p /app/logs /app/cache /app/uploads /tmp && \
-    chown -R appuser:appgroup /app /tmp
+RUN mkdir -p /app/logs /app/cache /app/uploads && \
+    chown -R appuser:appgroup /app
 
 USER 1001
 
@@ -42,11 +56,13 @@ EXPOSE 8080 9090
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -fsS http://localhost:8080/health || exit 1
 
+# Bind to the port the compose/k8s env sets (PORT=8080). Gunicorn with the
+# Uvicorn worker class runs the FastAPI ASGI app.
 CMD ["python", "-m", "gunicorn", \
      "--bind", "0.0.0.0:8080", \
      "--workers", "4", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--timeout", "60", \
-     "--access-logfile", "/app/logs/access.log", \
-     "--error-logfile", "/app/logs/error.log", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
      "app.main:app"]

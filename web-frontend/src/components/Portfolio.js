@@ -1,9 +1,7 @@
-import {
-  Search as SearchIcon,
-  SortByAlpha as SortNameIcon,
-  TrendingDown as TrendingDownIcon,
-  TrendingUp as TrendingUpIcon,
-} from "@mui/icons-material";
+import SearchIcon from "@mui/icons-material/Search";
+import SortNameIcon from "@mui/icons-material/SortByAlpha";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import {
   Avatar,
   Box,

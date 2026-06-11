@@ -1,4 +1,4 @@
-import { Assessment as AssessmentIcon } from "@mui/icons-material";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 import {
   Box,
   Card,

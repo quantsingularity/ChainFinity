@@ -152,6 +152,9 @@ describe("AppContext", () => {
       res = await result.current.register({
         email: "new@b.com",
         password: "Password1!",
+        confirm_password: "Password1!",
+        terms_accepted: true,
+        privacy_accepted: true,
       });
     });
     expect(res.success).toBe(true);

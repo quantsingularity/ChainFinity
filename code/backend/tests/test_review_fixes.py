@@ -1,7 +1,10 @@
 """
-Tests for service methods covers the endpoint-facing portfolio asset/alert/export/sync
-helpers, the analytics service endpoint methods, and the risk service public wrappers that
-the API layer depends on.
+Tests for service methods added/fixed during the code review.
+
+Covers the endpoint-facing portfolio asset/alert/export/sync helpers, the
+analytics service endpoint methods, and the risk service public wrappers that
+the API layer depends on. These exercise the methods that were previously
+missing (and therefore guaranteed 500s at runtime).
 """
 
 from datetime import datetime, timezone

@@ -7,6 +7,21 @@ import {
 } from "react";
 import { authAPI, handleApiError } from "../services/api";
 
+// Normalize the backend user shape to what the UI consumes. The backend's
+// UserResponse exposes `primary_wallet_address` and has no display `name`,
+// while the UI reads `wallet_address` and `name`. Map between them here so
+// either shape works.
+const normalizeUser = (raw) => {
+  if (!raw) return raw;
+  const walletAddress =
+    raw.wallet_address ?? raw.primary_wallet_address ?? null;
+  const name =
+    raw.name ||
+    [raw.first_name, raw.last_name].filter(Boolean).join(" ") ||
+    (raw.email ? raw.email.split("@")[0] : undefined);
+  return { ...raw, wallet_address: walletAddress, name };
+};
+
 // Create context
 const AppContext = createContext();
 
@@ -43,8 +58,9 @@ export const AppProvider = ({ children }) => {
           // Attempt to verify token with backend (optional — fails gracefully)
           try {
             const response = await authAPI.getCurrentUser();
-            setUser(response.data);
-            localStorage.setItem("user", JSON.stringify(response.data));
+            const verifiedUser = normalizeUser(response.data);
+            setUser(verifiedUser);
+            localStorage.setItem("user", JSON.stringify(verifiedUser));
           } catch (_verifyErr) {
             // Backend unreachable or token expired — keep cached user for now
             // Only force logout on explicit 401 (invalid token)
@@ -107,8 +123,9 @@ export const AppProvider = ({ children }) => {
 
       // Get user data
       const userResponse = await authAPI.getCurrentUser();
-      setUser(userResponse.data);
-      localStorage.setItem("user", JSON.stringify(userResponse.data));
+      const loggedInUser = normalizeUser(userResponse.data);
+      setUser(loggedInUser);
+      localStorage.setItem("user", JSON.stringify(loggedInUser));
 
       setIsAuthenticated(true);
       setLoading(false);

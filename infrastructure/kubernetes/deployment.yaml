@@ -55,6 +55,9 @@ metadata:
     app.kubernetes.io/name: chainfinity
     app.kubernetes.io/component: configuration
 data:
+  # ENVIRONMENT is what the FastAPI backend reads (NODE_ENV is retained only
+  # for any Node-based tooling and is ignored by the backend).
+  ENVIRONMENT: "production"
   NODE_ENV: "production"
   LOG_LEVEL: "info"
   PORT: "8080"
@@ -245,37 +248,6 @@ spec:
           value: "application"
           effect: "NoSchedule"
 
-      initContainers:
-        - name: security-init
-          image: busybox:1.35
-          command: ["sh", "-c"]
-          args:
-            - |
-              echo "Running security initialization..."
-              ls -la /app || true
-              find /app -name "*.key" -o -name "*.pem" -o -name "*secret*" 2>/dev/null | wc -l || true
-              echo "Security initialization completed"
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
-            runAsGroup: 1000
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
-          volumeMounts:
-            - name: app-volume
-              mountPath: /app
-              readOnly: true
-          resources:
-            requests:
-              cpu: "10m"
-              memory: "16Mi"
-            limits:
-              cpu: "50m"
-              memory: "64Mi"
-
       containers:
         - name: frontend
           image: chainfinity/frontend:1.0.0
@@ -301,23 +273,11 @@ spec:
               containerPort: 9090
               protocol: TCP
 
-          env:
-            - name: NODE_ENV
-              valueFrom:
-                configMapKeyRef:
-                  name: chainfinity-config
-                  key: NODE_ENV
-            - name: PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: chainfinity-config
-                  key: PORT
-            - name: REACT_APP_API_URL
-              value: "https://api.chainfinity.com"
-            - name: REACT_APP_VERSION
-              value: "1.0.0"
-            - name: REACT_APP_ENVIRONMENT
-              value: "production"
+          # NOTE: the frontend is a static nginx-served SPA. REACT_APP_*
+          # values are compiled into the JS bundle at image BUILD time and
+          # cannot be set here at runtime; configure them as build args when
+          # building chainfinity/frontend. nginx listens on 8080 (see the
+          # container port and image), so no runtime env is required.
 
           resources:
             requests:
@@ -363,13 +323,12 @@ spec:
             failureThreshold: 30
 
           volumeMounts:
-            - name: app-volume
-              mountPath: /app
-              readOnly: true
             - name: tmp-volume
               mountPath: /tmp
-            - name: cache-volume
-              mountPath: /app/cache
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
             - name: logs-volume
               mountPath: /app/logs
             - name: tls-certs
@@ -405,15 +364,15 @@ spec:
               mountPath: /tmp
 
       volumes:
-        - name: app-volume
-          emptyDir:
-            sizeLimit: "1Gi"
         - name: tmp-volume
           emptyDir:
             sizeLimit: "500Mi"
-        - name: cache-volume
+        - name: nginx-cache
           emptyDir:
-            sizeLimit: "1Gi"
+            sizeLimit: "256Mi"
+        - name: nginx-run
+          emptyDir:
+            sizeLimit: "16Mi"
         - name: logs-volume
           emptyDir:
             sizeLimit: "2Gi"
@@ -484,7 +443,7 @@ spec:
         vault.hashicorp.com/agent-inject-secret-db: "secret/data/database/chainfinity"
         vault.hashicorp.com/agent-inject-template-db: |
           {{- with secret "secret/data/database/chainfinity" -}}
-          export DATABASE_URL="postgresql://{{ .Data.data.username }}:{{ .Data.data.password }}@{{ .Data.data.host }}:{{ .Data.data.port }}/{{ .Data.data.database }}?sslmode=require"
+          export DATABASE_URL="postgresql+asyncpg://{{ .Data.data.username }}:{{ .Data.data.password }}@{{ .Data.data.host }}:{{ .Data.data.port }}/{{ .Data.data.database }}"
           {{- end -}}
     spec:
       serviceAccountName: chainfinity-app
@@ -533,7 +492,8 @@ spec:
       initContainers:
         - name: database-migration
           image: chainfinity/backend:1.0.0
-          command: ["python", "manage.py", "migrate"]
+          # FastAPI app uses Alembic for migrations (not Django's manage.py).
+          command: ["alembic", "upgrade", "head"]
           securityContext:
             runAsNonRoot: true
             runAsUser: 1001
@@ -599,7 +559,7 @@ spec:
                 secretKeyRef:
                   name: chainfinity-redis-secret
                   key: redis-url
-            - name: JWT_SECRET
+            - name: SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: chainfinity-app-secret
@@ -633,7 +593,8 @@ spec:
 
           readinessProbe:
             httpGet:
-              path: /ready
+              # Backend exposes /health (no separate /ready route); use it.
+              path: /health
               port: http
               scheme: HTTP
             initialDelaySeconds: 10

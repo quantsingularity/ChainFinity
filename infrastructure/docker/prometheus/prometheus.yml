@@ -1,0 +1,35 @@
+# ChainFinity Prometheus configuration for the local Docker Compose stack.
+#
+# The Kubernetes prometheus config (kubernetes/monitoring/prometheus-config.yaml)
+# uses in-cluster service discovery and is not usable by a standalone
+# Prometheus. This file scrapes the compose services by their service names on
+# the shared Docker networks.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    cluster: "chainfinity-local"
+    environment: "development"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "chainfinity-backend"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend:9090"]
+        labels:
+          service: "backend"
+
+  # The frontend is a static nginx site without a metrics endpoint by default;
+  # add a target here if an nginx exporter is introduced.

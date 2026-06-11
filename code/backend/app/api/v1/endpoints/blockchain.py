@@ -317,3 +317,146 @@ async def get_gas_price(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve gas price",
         )
+
+
+# ── Frontend convenience endpoints ───────────────────────────────────────────
+# The web and mobile clients call these portfolio/transaction/eth-balance
+# routes. They return blockchain-derived views in the shapes the clients
+# expect. Like the other read endpoints in this module, they currently return
+# representative (mock) data; wire them to an on-chain indexer or the
+# portfolio service when that data source is available.
+
+
+@router.get("/portfolio/{address}", response_model=dict)
+async def get_address_portfolio(
+    address: str,
+    network: str = Query("ethereum"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session),
+) -> Any:
+    """
+    Return a portfolio summary (total value and per-asset breakdown) for a
+    wallet address. Shape matches what the web/mobile dashboards consume:
+    { total_value, assets: [{ symbol, name, balance, value, change_24h, color }] }.
+    """
+    try:
+        assets = [
+            {
+                "symbol": "ETH",
+                "name": "Ethereum",
+                "balance": 4.2,
+                "value": 12600.0,
+                "change_24h": 2.4,
+                "color": "#627eea",
+            },
+            {
+                "symbol": "BTC",
+                "name": "Bitcoin",
+                "balance": 0.18,
+                "value": 9720.0,
+                "change_24h": -0.8,
+                "color": "#f7931a",
+            },
+            {
+                "symbol": "LINK",
+                "name": "Chainlink",
+                "balance": 120.0,
+                "value": 1680.0,
+                "change_24h": 5.1,
+                "color": "#2a5ada",
+            },
+        ]
+        total_value = sum(a["value"] for a in assets)
+        return {
+            "address": address,
+            "network": network,
+            "total_value": total_value,
+            "assets": assets,
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Error getting address portfolio: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve portfolio",
+        )
+
+
+@router.get("/transactions/{address}", response_model=List[dict])
+async def get_address_transactions(
+    address: str,
+    network: str = Query("ethereum"),
+    limit: int = Query(25, ge=1, le=200),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session),
+) -> Any:
+    """
+    Return recent transactions for a wallet address in the shape the clients
+    render. This is the on-chain activity view, distinct from the user's
+    internal ledger under /transactions.
+    """
+    try:
+        now = datetime.now(timezone.utc)
+        sample = [
+            {
+                "id": "0xabc1",
+                "hash": "0xabc1",
+                "type": "send",
+                "from": address,
+                "to": "0xef00000000000000000000000000000000005678",
+                "amount": "0.5",
+                "value": "$1,260",
+                "asset": "ETH",
+                "network": network,
+                "timestamp": now.timestamp() - 3600,
+                "status": "confirmed",
+                "fee": "$4.20",
+            },
+            {
+                "id": "0xabc2",
+                "hash": "0xabc2",
+                "type": "receive",
+                "from": "0xef00000000000000000000000000000000005678",
+                "to": address,
+                "amount": "100",
+                "value": "$100",
+                "asset": "USDC",
+                "network": "polygon",
+                "timestamp": now.timestamp() - 7200,
+                "status": "confirmed",
+                "fee": "$0.10",
+            },
+        ]
+        return sample[:limit]
+    except Exception as e:
+        logger.error(f"Error getting address transactions: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve transactions",
+        )
+
+
+@router.get("/eth-balance", response_model=dict)
+async def get_eth_balance(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session),
+) -> Any:
+    """
+    Return the current user's native ETH balance. Uses the user's primary
+    wallet address when available.
+    """
+    try:
+        wallet = getattr(current_user, "primary_wallet_address", None)
+        return {
+            "address": wallet,
+            "network": "ethereum",
+            "balance": "4.2",
+            "balance_usd": "12600.00",
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Error getting ETH balance: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve ETH balance",
+        )

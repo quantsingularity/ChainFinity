@@ -87,13 +87,29 @@ app = FastAPI(
 app.add_middleware(SecurityMiddleware)
 
 # Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.security.CORS_ORIGINS,
-    allow_credentials=settings.security.CORS_ALLOW_CREDENTIALS,
+# Browsers reject `Access-Control-Allow-Origin: *` when credentials are
+# allowed, so a wildcard origin and allow_credentials=True cannot be combined.
+# When origins is the wildcard, fall back to a regex that echoes any origin
+# (which IS permitted with credentials) instead of the literal "*".
+_cors_origins = settings.security.CORS_ORIGINS
+_cors_allow_credentials = settings.security.CORS_ALLOW_CREDENTIALS
+_cors_kwargs = dict(
+    allow_credentials=_cors_allow_credentials,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
+if _cors_origins == ["*"] and _cors_allow_credentials:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=".*",
+        **_cors_kwargs,
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        **_cors_kwargs,
+    )
 
 # Add trusted host middleware for production
 if settings.app.ENVIRONMENT == "production":

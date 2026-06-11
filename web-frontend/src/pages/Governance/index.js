@@ -1,8 +1,6 @@
-import {
-  AccountBalanceWallet as WalletIcon,
-  HowToVote as VoteIcon,
-  Add as AddIcon,
-} from "@mui/icons-material";
+import WalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import VoteIcon from "@mui/icons-material/HowToVote";
+import AddIcon from "@mui/icons-material/Add";
 import {
   Alert,
   Box,

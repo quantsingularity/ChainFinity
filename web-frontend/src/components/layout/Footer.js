@@ -1,9 +1,7 @@
-import {
-  GitHub as GitHubIcon,
-  LinkedIn as LinkedInIcon,
-  Telegram as TelegramIcon,
-  Twitter as TwitterIcon,
-} from "@mui/icons-material";
+import GitHubIcon from "@mui/icons-material/GitHub";
+import LinkedInIcon from "@mui/icons-material/LinkedIn";
+import TelegramIcon from "@mui/icons-material/Telegram";
+import TwitterIcon from "@mui/icons-material/Twitter";
 import {
   Box,
   Container,

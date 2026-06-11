@@ -1,8 +1,6 @@
-import {
-  AccountBalance as BankIcon,
-  TrendingUp as TrendingUpIcon,
-  Refresh as RefreshIcon,
-} from "@mui/icons-material";
+import BankIcon from "@mui/icons-material/AccountBalance";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import {
   Alert,
   Box,

@@ -1,4 +1,4 @@
-import { HowToVote as VoteIcon } from "@mui/icons-material";
+import VoteIcon from "@mui/icons-material/HowToVote";
 import {
   Box,
   Card,

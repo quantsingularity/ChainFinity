@@ -1,13 +1,11 @@
-import {
-  ArrowDownward,
-  ArrowUpward,
-  FilterList,
-  GetApp,
-  MoreVert,
-  Refresh,
-  Search,
-  SwapHoriz,
-} from "@mui/icons-material";
+import ArrowDownward from "@mui/icons-material/ArrowDownward";
+import ArrowUpward from "@mui/icons-material/ArrowUpward";
+import FilterList from "@mui/icons-material/FilterList";
+import GetApp from "@mui/icons-material/GetApp";
+import MoreVert from "@mui/icons-material/MoreVert";
+import Refresh from "@mui/icons-material/Refresh";
+import Search from "@mui/icons-material/Search";
+import SwapHoriz from "@mui/icons-material/SwapHoriz";
 import {
   Alert,
   Box,

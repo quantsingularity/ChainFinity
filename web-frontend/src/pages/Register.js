@@ -1,11 +1,9 @@
-import {
-  AccountBalanceWallet,
-  Email,
-  Lock,
-  Person,
-  Visibility,
-  VisibilityOff,
-} from "@mui/icons-material";
+import AccountBalanceWallet from "@mui/icons-material/AccountBalanceWallet";
+import Email from "@mui/icons-material/Email";
+import Lock from "@mui/icons-material/Lock";
+import Person from "@mui/icons-material/Person";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import {
   Alert,
   Box,
@@ -125,10 +123,13 @@ const Register = () => {
 
     try {
       const result = await register({
-        name,
         email,
         password,
+        // The backend RegisterRequest requires these fields.
+        confirm_password: confirmPassword,
         wallet_address: walletAddress || undefined,
+        terms_accepted: true,
+        privacy_accepted: true,
       });
 
       if (result.success) {

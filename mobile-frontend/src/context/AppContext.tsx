@@ -23,6 +23,20 @@ export interface User {
   wallet_address?: string;
 }
 
+// Normalize the backend user shape (primary_wallet_address, no display name)
+// to what the UI consumes (wallet_address, name).
+const normalizeUser = (raw: Record<string, unknown>): User => {
+  const walletAddress =
+    (raw.wallet_address as string) ??
+    (raw.primary_wallet_address as string) ??
+    undefined;
+  const name =
+    (raw.name as string) ||
+    [raw.first_name, raw.last_name].filter(Boolean).join(" ") ||
+    (typeof raw.email === "string" ? raw.email.split("@")[0] : undefined);
+  return { ...(raw as object), wallet_address: walletAddress, name } as User;
+};
+
 interface AppContextValue {
   user: User | null;
   isAuthenticated: boolean;
@@ -65,8 +79,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           setIsAuthenticated(true);
           try {
             const response = await authAPI.getCurrentUser();
-            setUser(response.data);
-            await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.data));
+            const verifiedUser = normalizeUser(response.data);
+            setUser(verifiedUser);
+            await AsyncStorage.setItem(USER_KEY, JSON.stringify(verifiedUser));
           } catch (verifyErr) {
             const info = handleApiError(verifyErr);
             if (info.status === 401) {
@@ -112,8 +127,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       await AsyncStorage.setItem(TOKEN_KEY, accessToken);
 
       const userResponse = await authAPI.getCurrentUser();
-      setUser(userResponse.data);
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(userResponse.data));
+      const loggedInUser = normalizeUser(userResponse.data);
+      setUser(loggedInUser);
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(loggedInUser));
 
       setIsAuthenticated(true);
       setLoading(false);

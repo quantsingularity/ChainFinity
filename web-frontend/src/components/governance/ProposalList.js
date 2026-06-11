@@ -1,8 +1,6 @@
-import {
-  CheckCircle as ForIcon,
-  Cancel as AgainstIcon,
-  RemoveCircle as AbstainIcon,
-} from "@mui/icons-material";
+import ForIcon from "@mui/icons-material/CheckCircle";
+import AgainstIcon from "@mui/icons-material/Cancel";
+import AbstainIcon from "@mui/icons-material/RemoveCircle";
 import {
   Box,
   Button,

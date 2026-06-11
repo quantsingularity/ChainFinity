@@ -47,8 +47,10 @@ export interface LoginCredentials {
 export interface RegisterData {
   email: string;
   password: string;
-  first_name?: string;
-  last_name?: string;
+  confirm_password: string;
+  terms_accepted: boolean;
+  privacy_accepted: boolean;
+  wallet_address?: string;
 }
 
 // Auth API endpoints (backend: /api/v1/auth/*)

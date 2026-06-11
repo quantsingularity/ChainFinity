@@ -78,8 +78,8 @@ services:
   # ── Backend ────────────────────────────────────────────────────────────────
   backend:
     build:
-      context: .
-      dockerfile: docker/Dockerfile.backend
+      context: ..
+      dockerfile: infrastructure/docker/Dockerfile.backend
       target: production
     image: chainfinity/backend:local
     restart: unless-stopped
@@ -89,10 +89,11 @@ services:
       redis:
         condition: service_healthy
     environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://${POSTGRES_USER:-chainfinity}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-chainfinity}
+      ENVIRONMENT: development
+      DEBUG: "true"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-chainfinity}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-chainfinity}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      SECRET_KEY: ${JWT_SECRET:?JWT_SECRET is required}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
       LOG_LEVEL: debug
       PORT: "8080"
@@ -119,17 +120,20 @@ services:
   # ── Frontend ───────────────────────────────────────────────────────────────
   frontend:
     build:
-      context: .
-      dockerfile: docker/Dockerfile.frontend
+      context: ..
+      dockerfile: infrastructure/docker/Dockerfile.frontend
       target: production
+      args:
+        # REACT_APP_* values are inlined into the JS bundle at build time by
+        # Create React App, so they must be passed as build args, not runtime
+        # environment variables. This must be a browser-reachable URL.
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:8080}
+        REACT_APP_ENVIRONMENT: ${REACT_APP_ENVIRONMENT:-development}
     image: chainfinity/frontend:local
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
-    environment:
-      REACT_APP_API_URL: http://localhost:8080
-      REACT_APP_ENVIRONMENT: development
     ports:
       - "127.0.0.1:3000:8080"
     networks:
@@ -153,7 +157,7 @@ services:
       - --web.console.libraries=/usr/share/prometheus/console_libraries
       - --web.console.templates=/usr/share/prometheus/consoles
     volumes:
-      - ./kubernetes/monitoring/prometheus-config.yaml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"

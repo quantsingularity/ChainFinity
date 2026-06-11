@@ -1,16 +1,14 @@
-import {
-  AccountBalanceWallet as WalletIcon,
-  DarkMode as DarkModeIcon,
-  Dashboard as DashboardIcon,
-  Gavel as GovernanceIcon,
-  LightMode as LightModeIcon,
-  Logout as LogoutIcon,
-  Menu as MenuIcon,
-  Person as PersonIcon,
-  PieChart as PortfolioIcon,
-  Settings as SettingsIcon,
-  SwapHoriz as SwapIcon,
-} from "@mui/icons-material";
+import WalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import GovernanceIcon from "@mui/icons-material/Gavel";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import LogoutIcon from "@mui/icons-material/Logout";
+import MenuIcon from "@mui/icons-material/Menu";
+import PersonIcon from "@mui/icons-material/Person";
+import PortfolioIcon from "@mui/icons-material/PieChart";
+import SettingsIcon from "@mui/icons-material/Settings";
+import SwapIcon from "@mui/icons-material/SwapHoriz";
 import {
   AppBar,
   Avatar,

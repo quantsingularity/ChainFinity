@@ -1,13 +1,11 @@
-import {
-  AccountBalanceWallet,
-  ArrowDownward,
-  ArrowUpward,
-  MoreVert,
-  Refresh,
-  SwapHoriz,
-  Timeline,
-  TrendingUp,
-} from "@mui/icons-material";
+import AccountBalanceWallet from "@mui/icons-material/AccountBalanceWallet";
+import ArrowDownward from "@mui/icons-material/ArrowDownward";
+import ArrowUpward from "@mui/icons-material/ArrowUpward";
+import MoreVert from "@mui/icons-material/MoreVert";
+import Refresh from "@mui/icons-material/Refresh";
+import SwapHoriz from "@mui/icons-material/SwapHoriz";
+import Timeline from "@mui/icons-material/Timeline";
+import TrendingUp from "@mui/icons-material/TrendingUp";
 import {
   Alert,
   Avatar,

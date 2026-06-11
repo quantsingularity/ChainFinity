@@ -118,10 +118,12 @@ describe("Register Component", () => {
 
     await waitFor(() => {
       expect(mockRegister).toHaveBeenCalledWith({
-        name: "John Doe",
         email: "john@example.com",
         password: "password123",
+        confirm_password: "password123",
         wallet_address: undefined,
+        terms_accepted: true,
+        privacy_accepted: true,
       });
     });
   });

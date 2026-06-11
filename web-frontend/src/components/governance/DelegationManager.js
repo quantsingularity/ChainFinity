@@ -1,4 +1,4 @@
-import { People as PeopleIcon } from "@mui/icons-material";
+import PeopleIcon from "@mui/icons-material/People";
 import {
   Box,
   Button,

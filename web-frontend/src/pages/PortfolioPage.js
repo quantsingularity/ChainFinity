@@ -1,9 +1,7 @@
-import {
-  AccountBalanceWallet,
-  Refresh,
-  TrendingDown,
-  TrendingUp,
-} from "@mui/icons-material";
+import AccountBalanceWallet from "@mui/icons-material/AccountBalanceWallet";
+import Refresh from "@mui/icons-material/Refresh";
+import TrendingDown from "@mui/icons-material/TrendingDown";
+import TrendingUp from "@mui/icons-material/TrendingUp";
 import {
   Alert,
   Avatar,

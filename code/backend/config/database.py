@@ -66,14 +66,20 @@ if async_read_engine:
         autoflush=False,
         autocommit=False,
     )
-sync_engine = create_engine(
-    settings.database.DATABASE_URL.replace("+asyncpg", ""),
-    echo=settings.database.DB_ECHO,
-    pool_size=settings.database.DB_POOL_SIZE,
-    max_overflow=settings.database.DB_MAX_OVERFLOW,
-    pool_timeout=settings.database.DB_POOL_TIMEOUT,
-    pool_recycle=settings.database.DB_POOL_RECYCLE,
-)
+_sync_url = settings.database.DATABASE_URL.replace("+asyncpg", "")
+# SQLite uses StaticPool and does not accept QueuePool sizing kwargs; only
+# pass pool sizing for real server databases.
+if _sync_url.startswith("sqlite"):
+    sync_engine = create_engine(_sync_url, echo=settings.database.DB_ECHO)
+else:
+    sync_engine = create_engine(
+        _sync_url,
+        echo=settings.database.DB_ECHO,
+        pool_size=settings.database.DB_POOL_SIZE,
+        max_overflow=settings.database.DB_MAX_OVERFLOW,
+        pool_timeout=settings.database.DB_POOL_TIMEOUT,
+        pool_recycle=settings.database.DB_POOL_RECYCLE,
+    )
 SyncSessionLocal = sessionmaker(bind=sync_engine, autocommit=False, autoflush=False)
 redis_client: Optional[redis.Redis] = None
 
@@ -219,6 +225,21 @@ async def init_database() -> None:
             async with AsyncReadSessionLocal() as session:
                 await session.execute(text("SELECT 1"))
             logger.info("Read replica database connection established")
+
+        # Outside production, create any missing tables directly from the ORM
+        # metadata so a fresh stack (e.g. docker-compose) is usable without a
+        # separate migration step. Production uses Alembic migrations and must
+        # not auto-create schema, so this is gated on ENVIRONMENT.
+        if settings.app.ENVIRONMENT != "production":
+            # Importing the models package registers every table on
+            # Base.metadata before create_all runs.
+            import models  # noqa: F401
+            from models.base import Base
+
+            async with async_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("Database tables ensured (non-production auto-create)")
+
         await init_redis()
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")

@@ -1,17 +1,15 @@
-import {
-  AccountCircle,
-  DarkMode,
-  Delete,
-  Edit,
-  Language,
-  LightMode,
-  Notifications,
-  Save,
-  Security,
-  Visibility,
-  VisibilityOff,
-  Wallet,
-} from "@mui/icons-material";
+import AccountCircle from "@mui/icons-material/AccountCircle";
+import DarkMode from "@mui/icons-material/DarkMode";
+import Delete from "@mui/icons-material/Delete";
+import Edit from "@mui/icons-material/Edit";
+import Language from "@mui/icons-material/Language";
+import LightMode from "@mui/icons-material/LightMode";
+import Notifications from "@mui/icons-material/Notifications";
+import Save from "@mui/icons-material/Save";
+import Security from "@mui/icons-material/Security";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import Wallet from "@mui/icons-material/Wallet";
 import {
   Alert,
   Avatar,
