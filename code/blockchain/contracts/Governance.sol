@@ -216,10 +216,7 @@ contract InstitutionalGovernance is ReentrancyGuard, Pausable, AccessControl {
 
     modifier onlyActiveProposal(uint256 proposalId) {
         Proposal storage p = proposals[proposalId];
-        require(
-            block.timestamp >= p.startTime,
-            "Voting not started"
-        );
+        require(block.timestamp >= p.startTime, "Voting not started");
         require(block.timestamp <= p.endTime, "Voting ended");
         // Transition Pending -> Active on first interaction inside the
         // voting window. Previously no code ever set Active, so voting was
@@ -407,7 +404,9 @@ contract InstitutionalGovernance is ReentrancyGuard, Pausable, AccessControl {
         // A delegator may only have one active delegate at a time; revoke the
         // previous one first so accounting stays consistent.
         address previous = activeDelegate[msg.sender];
-        if (previous != address(0) && delegations[msg.sender][previous].isActive) {
+        if (
+            previous != address(0) && delegations[msg.sender][previous].isActive
+        ) {
             uint256 prevAmount = delegations[msg.sender][previous].amount;
             _revokeDelegation(msg.sender, previous);
             votingPower[previous] = votingPower[previous].sub(prevAmount);
@@ -560,7 +559,9 @@ contract InstitutionalGovernance is ReentrancyGuard, Pausable, AccessControl {
         );
 
         if (block.timestamp > proposal.endTime) {
-            uint256 decisiveVotes = proposal.forVotes.add(proposal.againstVotes);
+            uint256 decisiveVotes = proposal.forVotes.add(
+                proposal.againstVotes
+            );
             if (totalVotes >= proposal.quorumRequired && decisiveVotes > 0) {
                 uint256 approvalPercentage = proposal.forVotes.mul(100).div(
                     decisiveVotes

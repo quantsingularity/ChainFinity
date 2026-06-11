@@ -30,12 +30,14 @@ describe("AssetVault", () => {
       admin.address,
       operator.address,
       emergency.address,
-      feeCollector.address
+      feeCollector.address,
     );
 
     // Fund the user and approve the vault.
     await token.transfer(user.address, TOKENS(500_000));
-    await token.connect(user).approve(await vault.getAddress(), TOKENS(500_000));
+    await token
+      .connect(user)
+      .approve(await vault.getAddress(), TOKENS(500_000));
   });
 
   it("credits a deposit net of the deposit fee", async () => {
@@ -43,7 +45,7 @@ describe("AssetVault", () => {
     // depositFeeRate is 10 bps (0.1%): 1000 -> 999 net.
     const balance = await vault.getBalance(
       user.address,
-      await token.getAddress()
+      await token.getAddress(),
     );
     expect(balance).to.equal(TOKENS(999));
   });
@@ -53,7 +55,7 @@ describe("AssetVault", () => {
     await vault.connect(user).withdraw(await token.getAddress(), TOKENS(500));
     const balance = await vault.getBalance(
       user.address,
-      await token.getAddress()
+      await token.getAddress(),
     );
     expect(balance).to.equal(TOKENS(499)); // 999 deposited - 500 withdrawn
   });
@@ -64,13 +66,13 @@ describe("AssetVault", () => {
     await vault.connect(user).deposit(await token.getAddress(), TOKENS(1000));
 
     await expect(
-      vault.connect(user).withdraw(await token.getAddress(), TOKENS(500))
+      vault.connect(user).withdraw(await token.getAddress(), TOKENS(500)),
     ).to.emit(vault, "WithdrawalRequested");
 
     // Funds are escrowed immediately: internal balance drops right away.
     const escrowed = await vault.getBalance(
       user.address,
-      await token.getAddress()
+      await token.getAddress(),
     );
     expect(escrowed).to.equal(TOKENS(499)); // 999 - 500 escrowed
 
@@ -93,19 +95,19 @@ describe("AssetVault", () => {
 
     await expect(vault.connect(user).cancelWithdrawal(0)).to.emit(
       vault,
-      "WithdrawalCancelled"
+      "WithdrawalCancelled",
     );
 
     const balance = await vault.getBalance(
       user.address,
-      await token.getAddress()
+      await token.getAddress(),
     );
     expect(balance).to.equal(TOKENS(999)); // escrow fully refunded
   });
 
   it("rejects setting required approvals to zero", async () => {
     await expect(
-      vault.connect(admin).updateThresholds(TOKENS(100), 0)
+      vault.connect(admin).updateThresholds(TOKENS(100), 0),
     ).to.be.revertedWith("Approvals must be at least 1");
   });
 });

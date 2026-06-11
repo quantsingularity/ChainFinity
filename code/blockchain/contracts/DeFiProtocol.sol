@@ -156,7 +156,11 @@ contract InstitutionalDeFiProtocol is ReentrancyGuard, Pausable, AccessControl {
     );
 
     event TokenAuthorized(address indexed token, bool authorized);
-    event KYCStatusUpdated(uint256 indexed poolId, address indexed user, bool verified);
+    event KYCStatusUpdated(
+        uint256 indexed poolId,
+        address indexed user,
+        bool verified
+    );
     event BlacklistUpdated(address indexed user, bool blacklisted);
 
     // State variables
@@ -646,7 +650,10 @@ contract InstitutionalDeFiProtocol is ReentrancyGuard, Pausable, AccessControl {
     /**
      * @dev Total rewards earned and not yet claimed by `user` in `poolId`.
      */
-    function earned(uint256 poolId, address user) public view returns (uint256) {
+    function earned(
+        uint256 poolId,
+        address user
+    ) public view returns (uint256) {
         PoolInfo storage pool = pools[poolId];
         UserInfo storage userInfo = pool.users[user];
         return

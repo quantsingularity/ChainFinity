@@ -104,7 +104,10 @@ contract CrossChainManager is
     event LiquidityProviderAdded(address indexed provider, uint256 shares);
     event LiquidityProviderRemoved(address indexed provider);
     event FeesDistributed(address indexed token, uint256 totalFees);
-    event MessageReceived(bytes32 indexed messageId, uint64 sourceChainSelector);
+    event MessageReceived(
+        bytes32 indexed messageId,
+        uint64 sourceChainSelector
+    );
 
     /**
      * @dev Initialize function for upgradeable pattern
@@ -155,7 +158,10 @@ contract CrossChainManager is
         uint64 targetChainSelector,
         address targetAddress
     ) external payable nonReentrant whenNotPaused returns (bytes32 transferId) {
-        require(supportedChains[targetChainSelector], "Unsupported target chain");
+        require(
+            supportedChains[targetChainSelector],
+            "Unsupported target chain"
+        );
         require(
             trustedRemotes[targetChainSelector] != address(0),
             "No trusted remote for chain"
@@ -367,7 +373,10 @@ contract CrossChainManager is
     function removeLiquidityProvider(
         address provider
     ) external onlyRole(ADMIN_ROLE) {
-        require(liquidityProviderShares[provider] > 0, "Provider does not exist");
+        require(
+            liquidityProviderShares[provider] > 0,
+            "Provider does not exist"
+        );
 
         totalLiquidityShares -= liquidityProviderShares[provider];
         liquidityProviderShares[provider] = 0;

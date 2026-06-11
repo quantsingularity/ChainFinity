@@ -14,7 +14,7 @@ async function deployAssetVault() {
       admin.address,
       operator.address,
       emergency.address,
-      feeCollector.address
+      feeCollector.address,
     )
   ).wait();
 
