@@ -2,34 +2,60 @@ import { useRouter } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
-  FlatList,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { AllocationBar, RiskRing, Sparkline } from "../src/components/charts";
+import {
+  AppText,
+  Button,
+  Card,
+  GradientCard,
+  Screen,
+  SectionHeader,
+} from "../src/components/ui";
 import { useApp } from "../src/context/AppContext";
+import {
+  OVERALL_RISK_SCORE,
+  PORTFOLIO_HISTORY,
+  RISK_METRICS,
+} from "../src/hooks/useGovernanceData";
 import { PortfolioAsset, usePortfolioData } from "../src/hooks/useProtocolData";
+import { useTheme } from "../src/theme/ThemeContext";
+import { radius, spacing } from "../src/theme/theme";
 import { formatCurrency } from "../src/utils/helpers";
-import { colors } from "../src/theme/colors";
+
+const QUICK_ACTIONS = [
+  { label: "Portfolio", route: "/portfolio", icon: "\uD83D\uDCCA" },
+  { label: "Transactions", route: "/transactions", icon: "\u21C4" },
+  { label: "Governance", route: "/governance", icon: "\uD83D\uDDF3" },
+  { label: "Settings", route: "/settings", icon: "\u2699" },
+] as const;
 
 const AssetRow = ({ asset }: { asset: PortfolioAsset }) => {
+  const { theme } = useTheme();
   const positive = asset.change_24h >= 0;
   return (
     <View style={styles.assetRow} testID={`asset-${asset.symbol}`}>
       <View style={[styles.assetDot, { backgroundColor: asset.color }]} />
-      <View style={styles.assetInfo}>
-        <Text style={styles.assetSymbol}>{asset.symbol}</Text>
-        <Text style={styles.assetName}>{asset.name}</Text>
+      <View style={{ flex: 1 }}>
+        <AppText variant="bodyStrong">{asset.symbol}</AppText>
+        <AppText variant="caption" color="secondary">
+          {asset.name}
+        </AppText>
       </View>
-      <View style={styles.assetValues}>
-        <Text style={styles.assetValue}>{formatCurrency(asset.value)}</Text>
+      <View style={{ alignItems: "flex-end" }}>
+        <AppText variant="bodyStrong">{formatCurrency(asset.value)}</AppText>
         <Text
-          style={[
-            styles.assetChange,
-            { color: positive ? colors.success : colors.error },
-          ]}
+          style={{
+            fontSize: 12,
+            marginTop: 2,
+            color: positive ? theme.colors.success : theme.colors.error,
+          }}
         >
           {positive ? "+" : ""}
           {asset.change_24h}%
@@ -42,143 +68,221 @@ const AssetRow = ({ asset }: { asset: PortfolioAsset }) => {
 export default function DashboardScreen() {
   const router = useRouter();
   const { user, isAuthenticated } = useApp();
+  const { theme } = useTheme();
   const { portfolioData, loading, refreshPortfolio } = usePortfolioData();
 
   if (!isAuthenticated) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.muted}>Please sign in to view your dashboard.</Text>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => router.replace("/login")}
-        >
-          <Text style={styles.primaryButtonText}>Go to Sign In</Text>
-        </TouchableOpacity>
-      </View>
+      <Screen>
+        <View style={styles.center}>
+          <AppText color="secondary" center>
+            Please sign in to view your dashboard.
+          </AppText>
+          <Button
+            title="Go to Sign In"
+            onPress={() => router.replace("/login")}
+            fullWidth={false}
+            style={{ marginTop: spacing.lg }}
+          />
+        </View>
+      </Screen>
     );
   }
 
   if (loading && !portfolioData) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      <Screen>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </Screen>
     );
   }
 
+  const assets = portfolioData?.assets ?? [];
+  const totalChange = 2.9;
+  const slices = assets.map((a) => ({
+    label: a.symbol,
+    value: a.value,
+    color: a.color,
+  }));
+
   return (
-    <FlatList
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      data={portfolioData?.assets ?? []}
-      keyExtractor={(item) => item.symbol}
-      renderItem={({ item }) => <AssetRow asset={item} />}
-      refreshControl={
-        <RefreshControl
-          refreshing={loading}
-          onRefresh={refreshPortfolio}
-          tintColor={colors.primary}
-        />
-      }
-      ListHeaderComponent={
-        <View>
-          <Text style={styles.greeting}>
-            Welcome{user?.name ? `, ${user.name}` : ""}
+    <Screen scroll edges={["bottom"]}>
+      <ScrollView
+        scrollEnabled={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={refreshPortfolio}
+            tintColor={theme.colors.primary}
+          />
+        }
+      >
+        <AppText color="secondary">
+          Welcome{user?.name ? `, ${user.name}` : ""}
+        </AppText>
+
+        <GradientCard style={{ marginTop: spacing.md }}>
+          <Text style={styles.totalLabel}>Total Portfolio Value</Text>
+          <Text style={styles.totalValue} testID="total-value">
+            {formatCurrency(portfolioData?.total_value ?? 0)}
           </Text>
-          <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>Total Portfolio Value</Text>
-            <Text style={styles.totalValue} testID="total-value">
-              {formatCurrency(portfolioData?.total_value ?? 0)}
-            </Text>
+          <View style={styles.changeRow}>
+            <View style={styles.changePill}>
+              <Text style={styles.changeText}>
+                {"\u25B2"} {totalChange}% (24h)
+              </Text>
+            </View>
           </View>
-          <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.push("/transactions")}
-              accessibilityRole="button"
-              accessibilityLabel="View transactions"
-            >
-              <Text style={styles.actionText}>Transactions</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.push("/settings")}
-              accessibilityRole="button"
-              accessibilityLabel="Open settings"
-            >
-              <Text style={styles.actionText}>Settings</Text>
-            </TouchableOpacity>
+          <View style={{ marginTop: spacing.lg }}>
+            <Sparkline data={PORTFOLIO_HISTORY} color="#ffffff" />
           </View>
-          <Text style={styles.sectionTitle}>Assets</Text>
+        </GradientCard>
+
+        <View style={styles.actionsGrid}>
+          {QUICK_ACTIONS.map((a) => (
+            <TouchableOpacity
+              key={a.label}
+              style={[
+                styles.actionCard,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              onPress={() => router.push(a.route)}
+              accessibilityRole="button"
+              accessibilityLabel={a.label}
+            >
+              <Text style={{ fontSize: 22 }}>{a.icon}</Text>
+              <AppText variant="caption" style={{ marginTop: spacing.xs }}>
+                {a.label}
+              </AppText>
+            </TouchableOpacity>
+          ))}
         </View>
-      }
-      ListEmptyComponent={
-        <Text style={styles.muted}>No assets in this portfolio yet.</Text>
-      }
-    />
+
+        <Card style={{ marginTop: spacing.lg }}>
+          <SectionHeader
+            title="Risk overview"
+            action="Details"
+            onAction={() => router.push("/portfolio")}
+          />
+          <View style={styles.riskRow}>
+            <RiskRing score={OVERALL_RISK_SCORE} size={110} />
+            <View style={{ flex: 1, marginLeft: spacing.lg }}>
+              {RISK_METRICS.map((m) => (
+                <View key={m.label} style={{ marginBottom: spacing.sm }}>
+                  <View style={styles.metricLabelRow}>
+                    <AppText variant="caption" color="secondary">
+                      {m.label}
+                    </AppText>
+                    <AppText variant="caption" color="secondary">
+                      {m.value}
+                    </AppText>
+                  </View>
+                  <View style={styles.metricTrack}>
+                    <View
+                      style={{
+                        width: `${m.value}%`,
+                        height: "100%",
+                        borderRadius: 4,
+                        backgroundColor: theme.colors[m.tone],
+                      }}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        </Card>
+
+        {slices.length > 0 && (
+          <Card style={{ marginTop: spacing.lg }}>
+            <SectionHeader title="Allocation" />
+            <AllocationBar slices={slices} />
+          </Card>
+        )}
+
+        <View style={{ marginTop: spacing.lg }}>
+          <SectionHeader
+            title="Assets"
+            action="View all"
+            onAction={() => router.push("/portfolio")}
+          />
+          <Card padded={false} style={{ padding: spacing.xs }}>
+            {assets.length === 0 ? (
+              <AppText color="secondary" center style={{ padding: spacing.lg }}>
+                No assets in this portfolio yet.
+              </AppText>
+            ) : (
+              assets.map((a, i) => (
+                <View key={a.symbol}>
+                  <View style={{ paddingHorizontal: spacing.md }}>
+                    <AssetRow asset={a} />
+                  </View>
+                  {i < assets.length - 1 && (
+                    <View
+                      style={[
+                        styles.rowDivider,
+                        { backgroundColor: theme.colors.divider },
+                      ]}
+                    />
+                  )}
+                </View>
+              ))
+            )}
+          </Card>
+        </View>
+
+        <View style={{ height: spacing.xxl }} />
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 20, paddingBottom: 40 },
-  center: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    gap: 16,
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  totalLabel: { color: "rgba(255,255,255,0.85)", fontSize: 13 },
+  totalValue: { color: "#fff", fontSize: 34, fontWeight: "800", marginTop: 6 },
+  changeRow: { flexDirection: "row", marginTop: spacing.sm },
+  changePill: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
   },
-  greeting: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  totalCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-  },
-  totalLabel: { color: colors.textSecondary, fontSize: 13, marginBottom: 6 },
-  totalValue: { color: colors.textPrimary, fontSize: 32, fontWeight: "700" },
-  actionsRow: { flexDirection: "row", gap: 12, marginBottom: 20 },
-  actionButton: {
-    flex: 1,
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  actionText: { color: colors.textPrimary, fontWeight: "600" },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 10,
-  },
-  assetRow: {
+  changeText: { color: "#fff", fontWeight: "700", fontSize: 12 },
+  actionsGrid: {
     flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: spacing.lg,
+    gap: spacing.sm,
+  },
+  actionCard: {
+    flex: 1,
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
   },
+  riskRow: { flexDirection: "row", alignItems: "center" },
+  metricLabelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  metricTrack: {
+    height: 6,
+    borderRadius: 4,
+    backgroundColor: "rgba(128,128,160,0.2)",
+    overflow: "hidden",
+  },
+  assetRow: { flexDirection: "row", alignItems: "center", paddingVertical: 14 },
   assetDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
-  assetInfo: { flex: 1 },
-  assetSymbol: { color: colors.textPrimary, fontWeight: "700", fontSize: 15 },
-  assetName: { color: colors.textSecondary, fontSize: 12 },
-  assetValues: { alignItems: "flex-end" },
-  assetValue: { color: colors.textPrimary, fontWeight: "600" },
-  assetChange: { fontSize: 12, marginTop: 2 },
-  muted: { color: colors.textSecondary, textAlign: "center" },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+  rowDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: spacing.md,
   },
-  primaryButtonText: { color: "#fff", fontWeight: "600" },
 });

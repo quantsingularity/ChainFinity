@@ -16,18 +16,34 @@ could not run on a device.
 
 ## Screens
 
-| Route         | Purpose                                      |
-| ------------- | -------------------------------------------- |
-| /             | Landing with sign-in / register entry points |
-| /login        | Email + password sign in, guest demo mode    |
-| /register     | Account creation with client-side validation |
-| /dashboard    | Portfolio total, asset list, pull to refresh |
-| /transactions | History with search and type filters         |
-| /settings     | Profile summary and sign out                 |
+| Route            | Purpose                                                      |
+| ---------------- | ------------------------------------------------------------ |
+| /                | Landing page (hero, stats, features) with sign-in / register |
+| /login           | Email + password sign in, guest demo mode, forgot-password   |
+| /register        | Account creation with client-side validation                 |
+| /forgot-password | Password reset request flow                                  |
+| /dashboard       | Portfolio value, 24h sparkline, risk overview, allocation    |
+| /portfolio       | Overview / Assets / Risk tabs with allocation and metrics    |
+| /transactions    | History with search and type filters                         |
+| /governance      | Voting power, proposals, vote actions, create proposal       |
+| /settings        | Profile, appearance (dark mode), notifications, security     |
+
+The app opens on the landing page. From there the user can sign in or
+register and then move into the dashboard and the rest of the app.
 
 When the backend is unreachable, the data hooks fall back to mock data so
 the app remains explorable, and the guest login (guest@chainfinity.io)
 works fully offline.
+
+## Design system
+
+The mobile app now shares one visual language with the web frontend: the same
+brand gradient (#3a36e0 to #6c63ff), teal accent, semantic colours, spacing
+scale, radii and typography. Tokens live in `src/theme/theme.ts` (light and
+dark palettes), a `ThemeProvider` (`src/theme/ThemeContext.tsx`) supplies the
+active theme with a persisted dark-mode toggle, and a reusable UI kit
+(`src/components/ui`) plus lightweight charts (`src/components/charts.tsx`)
+keep every screen consistent.
 
 ## Configuration
 

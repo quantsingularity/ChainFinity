@@ -1,15 +1,8 @@
-// Shared palette, mirroring the web app's branding.
-export const colors = {
-  primary: "#6c63ff",
-  primaryDark: "#4b44cc",
-  secondary: "#03dac6",
-  background: "#0f0f17",
-  surface: "#1a1a2e",
-  surfaceLight: "#23233a",
-  textPrimary: "#e8e8f0",
-  textSecondary: "#a0a0b8",
-  success: "#4caf50",
-  error: "#ef5350",
-  warning: "#ffb74d",
-  divider: "#2c2c44",
-};
+// Backward-compatible export. The canonical design tokens now live in
+// theme.ts (light + dark). This module keeps the original dark palette so
+// existing imports (`import { colors } from "../theme/colors"`) keep working.
+import { darkTheme } from "./theme";
+
+export const colors = darkTheme.colors;
+
+export default colors;

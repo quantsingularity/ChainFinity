@@ -1,16 +1,16 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-} from "react-native";
+  AppText,
+  Button,
+  Card,
+  Input,
+  Logo,
+  Screen,
+} from "../src/components/ui";
 import { useApp } from "../src/context/AppContext";
-import { colors } from "../src/theme/colors";
+import { spacing } from "../src/theme/theme";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -41,128 +41,139 @@ export default function RegisterScreen() {
     const result = await register({
       email: email.trim(),
       password,
-      // Required by the backend RegisterRequest.
       confirm_password: confirm,
       terms_accepted: true,
       privacy_accepted: true,
     });
     setSubmitting(false);
-    if (result.success) {
-      setDone(true);
-    }
+    if (result.success) setDone(true);
   };
 
   if (done) {
     return (
-      <KeyboardAvoidingView style={styles.container}>
-        <Text style={styles.title}>Account created</Text>
-        <Text style={styles.subtitle}>You can sign in now.</Text>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => router.replace("/login")}
-          accessibilityRole="button"
-          accessibilityLabel="Go to sign in"
-        >
-          <Text style={styles.primaryButtonText}>Go to Sign In</Text>
-        </TouchableOpacity>
-      </KeyboardAvoidingView>
+      <Screen>
+        <View style={styles.doneWrap}>
+          <View style={styles.checkCircle}>
+            <AppText style={{ fontSize: 34 }}>{"\u2713"}</AppText>
+          </View>
+          <AppText variant="h1" center>
+            Account created
+          </AppText>
+          <AppText
+            color="secondary"
+            center
+            style={{ marginVertical: spacing.md }}
+          >
+            Your ChainFinity account is ready. Sign in to continue.
+          </AppText>
+          <Button
+            title="Go to Sign In"
+            onPress={() => router.replace("/login")}
+          />
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <Text style={styles.title}>Create Account</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Email Address"
-        placeholderTextColor={colors.textSecondary}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-        accessibilityLabel="Email Address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor={colors.textSecondary}
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        accessibilityLabel="Password"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm Password"
-        placeholderTextColor={colors.textSecondary}
-        secureTextEntry
-        value={confirm}
-        onChangeText={setConfirm}
-        accessibilityLabel="Confirm Password"
-      />
-
-      {(formError || error) && (
-        <Text style={styles.error}>{formError || error?.message}</Text>
-      )}
-
-      <TouchableOpacity
-        style={styles.primaryButton}
-        onPress={handleRegister}
-        disabled={submitting}
-        accessibilityRole="button"
-        accessibilityLabel="Create account"
+    <Screen scroll edges={["bottom"]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        {submitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.primaryButtonText}>Create Account</Text>
+        <View style={styles.header}>
+          <Logo size={30} />
+        </View>
+
+        <AppText variant="h1" style={{ marginTop: spacing.xl }}>
+          Create your account
+        </AppText>
+        <AppText color="secondary" style={{ marginBottom: spacing.xl }}>
+          Start tracking your cross-chain portfolio in minutes.
+        </AppText>
+
+        <Input
+          label="Email Address"
+          accessibilityLabel="Email Address"
+          placeholder="you@example.com"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+        <Input
+          label="Password"
+          accessibilityLabel="Password"
+          placeholder="At least 8 characters"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+        <Input
+          label="Confirm Password"
+          accessibilityLabel="Confirm Password"
+          placeholder="Re-enter your password"
+          secureTextEntry
+          value={confirm}
+          onChangeText={setConfirm}
+        />
+
+        {(formError || error) && (
+          <AppText color="error" center style={{ marginBottom: spacing.md }}>
+            {formError || error?.message}
+          </AppText>
         )}
-      </TouchableOpacity>
-    </KeyboardAvoidingView>
+
+        <Button
+          title="Create Account"
+          onPress={handleRegister}
+          loading={submitting}
+          accessibilityLabel="Create account"
+        />
+
+        <Card
+          style={{
+            marginTop: spacing.lg,
+            backgroundColor: "transparent",
+            borderWidth: 0,
+          }}
+          padded={false}
+        >
+          <AppText variant="caption" color="muted" center>
+            By creating an account you agree to our Terms of Service and Privacy
+            Policy.
+          </AppText>
+        </Card>
+
+        <View style={styles.footerRow}>
+          <AppText color="secondary">Already have an account? </AppText>
+          <AppText
+            color="brand"
+            style={{ fontWeight: "700" }}
+            onPress={() => router.push("/login")}
+          >
+            Sign In
+          </AppText>
+        </View>
+      </KeyboardAvoidingView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: 24,
+  header: { alignItems: "center", marginTop: spacing.lg },
+  footerRow: {
+    flexDirection: "row",
     justifyContent: "center",
+    marginTop: spacing.xl,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: colors.textPrimary,
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.divider,
-    color: colors.textPrimary,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  error: { color: colors.error, marginBottom: 12, textAlign: "center" },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
+  doneWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+  checkCircle: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: "#22c55e22",
     alignItems: "center",
-    marginTop: 4,
+    justifyContent: "center",
+    marginBottom: spacing.lg,
   },
-  primaryButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
 });

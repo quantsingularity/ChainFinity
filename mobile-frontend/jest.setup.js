@@ -22,3 +22,31 @@ jest.mock("expo-router", () => {
     }),
   };
 });
+
+// Mock expo-linear-gradient as a plain View so the UI kit renders in tests.
+jest.mock("expo-linear-gradient", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    LinearGradient: ({ children, ...props }) =>
+      React.createElement(View, props, children),
+  };
+});
+
+// Mock react-native-safe-area-context to avoid needing a provider in unit tests.
+jest.mock("react-native-safe-area-context", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  const inset = { top: 0, right: 0, bottom: 0, left: 0 };
+  return {
+    SafeAreaProvider: ({ children }) =>
+      React.createElement(React.Fragment, null, children),
+    SafeAreaView: ({ children, ...props }) =>
+      React.createElement(View, props, children),
+    useSafeAreaInsets: () => inset,
+    SafeAreaConsumer: ({ children }) => children(inset),
+    SafeAreaInsetsContext: {
+      Consumer: ({ children }) => children(inset),
+    },
+  };
+});

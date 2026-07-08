@@ -1,4 +1,3 @@
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import LayersIcon from "@mui/icons-material/Layers";
 import SecurityIcon from "@mui/icons-material/Security";
 import SpeedIcon from "@mui/icons-material/Speed";
@@ -14,10 +13,6 @@ import {
   Container,
   Divider,
   Grid,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   Paper,
   TextField,
   Typography,
@@ -193,18 +188,144 @@ const Home = () => {
                     position: "relative",
                   }}
                 >
-                  <Box
-                    component="img"
-                    src="/dashboard-preview.png"
-                    alt="Dashboard Preview"
+                  <Paper
+                    elevation={0}
                     sx={{
                       width: "100%",
-                      maxWidth: 500,
-                      height: "auto",
-                      borderRadius: 3,
-                      boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
+                      maxWidth: 460,
+                      p: 3,
+                      borderRadius: 4,
+                      border: `1px solid ${theme.palette.divider}`,
+                      boxShadow:
+                        theme.palette.mode === "light"
+                          ? "0 24px 60px rgba(58, 54, 224, 0.15)"
+                          : "0 24px 60px rgba(0, 0, 0, 0.45)",
                     }}
-                  />
+                  >
+                    <Box
+                      sx={{
+                        borderRadius: 3,
+                        p: 3,
+                        color: "#fff",
+                        background:
+                          "linear-gradient(135deg, #3a36e0 0%, #6c63ff 100%)",
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                        Total Portfolio Value
+                      </Typography>
+                      <Typography
+                        variant="h4"
+                        fontWeight={800}
+                        sx={{ mt: 0.5 }}
+                      >
+                        $24,850.42
+                      </Typography>
+                      <Box
+                        sx={{
+                          mt: 2,
+                          display: "flex",
+                          alignItems: "flex-end",
+                          gap: 0.75,
+                          height: 56,
+                        }}
+                      >
+                        {[40, 55, 48, 70, 82, 68, 95].map((h, i) => (
+                          <Box
+                            key={i}
+                            sx={{
+                              flex: 1,
+                              height: `${h}%`,
+                              borderRadius: 1,
+                              backgroundColor:
+                                i === 6 ? "#ffffff" : "rgba(255,255,255,0.45)",
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+
+                    {[
+                      {
+                        s: "ETH",
+                        n: "Ethereum",
+                        v: "$12,600",
+                        c: "+2.4%",
+                        up: true,
+                      },
+                      {
+                        s: "BTC",
+                        n: "Bitcoin",
+                        v: "$9,720",
+                        c: "-0.8%",
+                        up: false,
+                      },
+                      {
+                        s: "LINK",
+                        n: "Chainlink",
+                        v: "$1,680",
+                        c: "+5.1%",
+                        up: true,
+                      },
+                    ].map((row) => (
+                      <Box
+                        key={row.s}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          py: 1.5,
+                          borderBottom: `1px solid ${theme.palette.divider}`,
+                          "&:last-of-type": { borderBottom: "none" },
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1.5,
+                          }}
+                        >
+                          <Avatar
+                            sx={{
+                              width: 34,
+                              height: 34,
+                              fontSize: 13,
+                              fontWeight: 700,
+                              bgcolor: "primary.main",
+                            }}
+                          >
+                            {row.s.slice(0, 2)}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" fontWeight={700}>
+                              {row.s}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {row.n}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Box sx={{ textAlign: "right" }}>
+                          <Typography variant="body2" fontWeight={700}>
+                            {row.v}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: row.up ? "success.main" : "error.main",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {row.c}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    ))}
+                  </Paper>
                 </motion.div>
               </Grid>
             </Grid>
@@ -454,291 +575,6 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* How It Works Section */}
-      <Box sx={{ py: 8, backgroundColor: theme.palette.background.default }}>
-        <Container maxWidth="lg">
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-          >
-            <motion.div variants={itemVariants}>
-              <Box sx={{ textAlign: "center", mb: 6 }}>
-                <Typography
-                  variant="h3"
-                  component="h2"
-                  fontWeight={700}
-                  gutterBottom
-                >
-                  How It Works
-                </Typography>
-                <Typography
-                  variant="h6"
-                  color="text.secondary"
-                  sx={{ maxWidth: 700, mx: "auto" }}
-                >
-                  Get started with ChainFinity in just a few simple steps
-                </Typography>
-              </Box>
-            </motion.div>
-
-            <Grid container spacing={4} alignItems="center">
-              <Grid item xs={12} md={6}>
-                <motion.div variants={itemVariants}>
-                  <List>
-                    <ListItem sx={{ pb: 3 }}>
-                      <ListItemIcon>
-                        <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                          1
-                        </Avatar>
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={
-                          <Typography variant="h6" fontWeight={600}>
-                            Create an Account
-                          </Typography>
-                        }
-                        secondary="Sign up for a free ChainFinity account using your email or connect with your wallet."
-                      />
-                    </ListItem>
-                    <ListItem sx={{ pb: 3 }}>
-                      <ListItemIcon>
-                        <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                          2
-                        </Avatar>
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={
-                          <Typography variant="h6" fontWeight={600}>
-                            Connect Your Wallets
-                          </Typography>
-                        }
-                        secondary="Add your wallet addresses or connect exchanges using secure API keys."
-                      />
-                    </ListItem>
-                    <ListItem sx={{ pb: 3 }}>
-                      <ListItemIcon>
-                        <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                          3
-                        </Avatar>
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={
-                          <Typography variant="h6" fontWeight={600}>
-                            View Your Portfolio
-                          </Typography>
-                        }
-                        secondary="Get a comprehensive overview of all your assets across different blockchains."
-                      />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemIcon>
-                        <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                          4
-                        </Avatar>
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={
-                          <Typography variant="h6" fontWeight={600}>
-                            Track Performance
-                          </Typography>
-                        }
-                        secondary="Monitor your portfolio performance, transaction history, and DeFi positions."
-                      />
-                    </ListItem>
-                  </List>
-                  <Box sx={{ mt: 4, pl: 9 }}>
-                    <GradientButton
-                      variant="contained"
-                      size="large"
-                      component={RouterLink}
-                      to="/register"
-                      endIcon={<ArrowForwardIcon />}
-                    >
-                      Get Started Now
-                    </GradientButton>
-                  </Box>
-                </motion.div>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <motion.div variants={itemVariants}>
-                  <Box
-                    component="img"
-                    src="/how-it-works.png"
-                    alt="How ChainFinity Works"
-                    sx={{
-                      width: "100%",
-                      maxWidth: 500,
-                      height: "auto",
-                      borderRadius: 3,
-                      boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
-                      mx: "auto",
-                      display: "block",
-                    }}
-                  />
-                </motion.div>
-              </Grid>
-            </Grid>
-          </motion.div>
-        </Container>
-      </Box>
-
-      {/* Testimonials Section */}
-      <Box sx={{ py: 8, backgroundColor: theme.palette.background.paper }}>
-        <Container maxWidth="lg">
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.2 }}
-          >
-            <motion.div variants={itemVariants}>
-              <Box sx={{ textAlign: "center", mb: 6 }}>
-                <Typography
-                  variant="h3"
-                  component="h2"
-                  fontWeight={700}
-                  gutterBottom
-                >
-                  What Our Users Say
-                </Typography>
-                <Typography
-                  variant="h6"
-                  color="text.secondary"
-                  sx={{ maxWidth: 700, mx: "auto" }}
-                >
-                  Join thousands of satisfied users who trust ChainFinity for
-                  their crypto portfolio tracking
-                </Typography>
-              </Box>
-            </motion.div>
-
-            <Grid container spacing={4}>
-              <Grid item xs={12} md={4}>
-                <motion.div variants={itemVariants}>
-                  <Paper
-                    elevation={2}
-                    sx={{
-                      p: 3,
-                      height: "100%",
-                      borderRadius: theme.shape.borderRadius,
-                      display: "flex",
-                      flexDirection: "column",
-                    }}
-                  >
-                    <Typography variant="body1" paragraph>
-                      "ChainFinity has completely transformed how I track my
-                      crypto investments. The multi-chain support and real-time
-                      data are game-changers for anyone serious about their
-                      portfolio."
-                    </Typography>
-                    <Box
-                      sx={{
-                        mt: "auto",
-                        pt: 2,
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Avatar sx={{ mr: 2 }}>JD</Avatar>
-                      <Box>
-                        <Typography variant="subtitle1" fontWeight={600}>
-                          John Doe
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Crypto Investor
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Paper>
-                </motion.div>
-              </Grid>
-
-              <Grid item xs={12} md={4}>
-                <motion.div variants={itemVariants}>
-                  <Paper
-                    elevation={2}
-                    sx={{
-                      p: 3,
-                      height: "100%",
-                      borderRadius: theme.shape.borderRadius,
-                      display: "flex",
-                      flexDirection: "column",
-                    }}
-                  >
-                    <Typography variant="body1" paragraph>
-                      "As a DeFi enthusiast, I needed a tool that could track
-                      all my positions across different protocols. ChainFinity
-                      does this perfectly, saving me hours of manual tracking
-                      every week."
-                    </Typography>
-                    <Box
-                      sx={{
-                        mt: "auto",
-                        pt: 2,
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Avatar sx={{ mr: 2 }}>JS</Avatar>
-                      <Box>
-                        <Typography variant="subtitle1" fontWeight={600}>
-                          Jane Smith
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          DeFi Developer
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Paper>
-                </motion.div>
-              </Grid>
-
-              <Grid item xs={12} md={4}>
-                <motion.div variants={itemVariants}>
-                  <Paper
-                    elevation={2}
-                    sx={{
-                      p: 3,
-                      height: "100%",
-                      borderRadius: theme.shape.borderRadius,
-                      display: "flex",
-                      flexDirection: "column",
-                    }}
-                  >
-                    <Typography variant="body1" paragraph>
-                      "The analytics and visualization tools in ChainFinity are
-                      unmatched. I can finally understand my portfolio
-                      performance at a glance and make informed investment
-                      decisions."
-                    </Typography>
-                    <Box
-                      sx={{
-                        mt: "auto",
-                        pt: 2,
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Avatar sx={{ mr: 2 }}>RJ</Avatar>
-                      <Box>
-                        <Typography variant="subtitle1" fontWeight={600}>
-                          Robert Johnson
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Financial Analyst
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Paper>
-                </motion.div>
-              </Grid>
-            </Grid>
-          </motion.div>
-        </Container>
-      </Box>
-
       {/* CTA Section */}
       <Box
         sx={{
@@ -776,16 +612,19 @@ const Home = () => {
                   size="large"
                   component={RouterLink}
                   to="/register"
+                  disableElevation
                   sx={{
-                    bgcolor: "white",
+                    background: "#ffffff",
                     color: "#3a36e0",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
                     "&:hover": {
-                      bgcolor: "rgba(255, 255, 255, 0.9)",
+                      background: "#f1f0ff",
+                      boxShadow: "0 10px 28px rgba(0,0,0,0.24)",
                     },
                     px: 4,
                     py: 1.5,
                     fontSize: "1.1rem",
-                    fontWeight: 600,
+                    fontWeight: 700,
                   }}
                 >
                   Sign Up for Free
@@ -822,25 +661,25 @@ const Home = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     variant="outlined"
                     sx={{
-                      bgcolor: "rgba(255, 255, 255, 0.1)",
-                      borderRadius: "8px 0 0 8px",
+                      bgcolor: "#ffffff",
+                      borderRadius: { xs: "8px", sm: "8px 0 0 8px" },
                       "& .MuiOutlinedInput-root": {
+                        borderRadius: { xs: "8px", sm: "8px 0 0 8px" },
                         "& fieldset": {
-                          borderColor: "rgba(255, 255, 255, 0.3)",
-                          borderRight: { sm: 0 },
+                          borderColor: "transparent",
                         },
                         "&:hover fieldset": {
-                          borderColor: "rgba(255, 255, 255, 0.5)",
+                          borderColor: "transparent",
                         },
                         "&.Mui-focused fieldset": {
-                          borderColor: "white",
+                          borderColor: "#3a36e0",
                         },
                       },
                       "& .MuiInputBase-input": {
-                        color: "white",
+                        color: "#151529",
                       },
                       "& .MuiInputBase-input::placeholder": {
-                        color: "rgba(255, 255, 255, 0.7)",
+                        color: "#8a8aa0",
                         opacity: 1,
                       },
                     }}
@@ -848,14 +687,19 @@ const Home = () => {
                   <Button
                     type="submit"
                     variant="contained"
+                    disableElevation
                     sx={{
-                      bgcolor: "white",
-                      color: "#3a36e0",
+                      background:
+                        "linear-gradient(45deg, #241f9e 0%, #3a36e0 100%)",
+                      color: "#ffffff",
                       "&:hover": {
-                        bgcolor: "rgba(255, 255, 255, 0.9)",
+                        background:
+                          "linear-gradient(45deg, #1d1888 0%, #322ec9 100%)",
                       },
                       borderRadius: { xs: "8px", sm: "0 8px 8px 0" },
                       px: 3,
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
                     }}
                   >
                     Subscribe
