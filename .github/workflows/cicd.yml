@@ -46,7 +46,7 @@ jobs:
           node-version: "20"
 
       - name: Install Global Formatters
-        run: npm install -g prettier prettier-plugin-solidity
+        run: npm install -g prettier@3.9.1 prettier-plugin-solidity
 
       - name: Run Global Prettier Check
         shell: bash
