@@ -17,13 +17,14 @@ docker compose up -d
 ```
 
 Services available:
-| Service | URL |
-|-------------|----------------------------|
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:8080 |
-| Prometheus | http://localhost:9090 |
-| Grafana | http://localhost:3001 |
-| Alertmanager| http://localhost:9093 |
+
+| Service      | URL                   |
+| ------------ | --------------------- |
+| Frontend     | http://localhost:3000 |
+| Backend API  | http://localhost:8080 |
+| Prometheus   | http://localhost:9090 |
+| Grafana      | http://localhost:3001 |
+| Alertmanager | http://localhost:9093 |
 
 ---
 

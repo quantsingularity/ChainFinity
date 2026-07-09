@@ -67,9 +67,7 @@ curl -X GET http://localhost:8000/api/v1/users/me \
 ```json
 {
   "success": true,
-  "data": {
-    /* response data */
-  },
+  "data": {/* response data */},
   "message": "Optional success message"
 }
 ```
@@ -81,9 +79,7 @@ curl -X GET http://localhost:8000/api/v1/users/me \
   "success": false,
   "error": "Error description",
   "code": "ERROR_CODE",
-  "details": [
-    /* optional error details */
-  ]
+  "details": [/* optional error details */]
 }
 ```
 
@@ -94,9 +90,7 @@ Paginated endpoints return:
 ```json
 {
   "success": true,
-  "data": [
-    /* array of items */
-  ],
+  "data": [/* array of items */],
   "pagination": {
     "page": 1,
     "page_size": 20,
@@ -452,9 +446,7 @@ List user transactions.
       "timestamp": "2025-01-08T12:00:00Z"
     }
   ],
-  "pagination": {
-    /* ... */
-  }
+  "pagination": {/* ... */}
 }
 ```
 
